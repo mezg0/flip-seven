@@ -16,7 +16,10 @@
   --olympus-gold: #c6923c;
   --olympus-gold-light: #f0ce7a;
   --olympus-line: rgba(94, 65, 24, 0.28);
+  --olympus-safe: #27634f;
+  --olympus-safe-light: #bdebd8;
   --olympus-danger: #9f342f;
+  --olympus-danger-light: #ffd0ca;
   --motion-swift: 180ms;
   --motion-calm: 280ms;
 }
