@@ -69,7 +69,7 @@ export function createGame(
     resolutionStack: [],
     resolutionTasks: [],
     godResolutionHistory: [],
-    flipSevenPlayerIds: [],
+    favourOfOlympusPlayerIds: [],
     roundEndRequested: false,
     winnerId: null,
     eventLog: [],
@@ -197,7 +197,7 @@ export function toPublicGameState(state: GameState, viewerId?: string): PublicGa
     discardCount: state.discardPile.length,
     roundNumber: state.roundNumber,
     pendingChoice: publicPendingChoice(state, viewerId),
-    flipSevenPlayerIds: [...state.flipSevenPlayerIds],
+    favourOfOlympusPlayerIds: [...state.favourOfOlympusPlayerIds],
     winnerId: state.winnerId,
     revision: state.revision,
   }
@@ -274,7 +274,7 @@ function startRound(context: EngineContext): void {
   state.resolutionTasks = []
   state.resolvingCards = []
   state.godResolutionHistory = []
-  state.flipSevenPlayerIds = []
+  state.favourOfOlympusPlayerIds = []
   state.roundEndRequested = false
   for (const player of state.players) resetPlayerRound(player)
   state.initialDealSeatsRemaining = seatsStartingAt(state, state.dealerSeat)
@@ -462,9 +462,9 @@ function finishAtomicNumberChanges(context: EngineContext, affectedPlayerIds: re
   })
 
   for (const playerId of achievers) {
-    if (!context.state.flipSevenPlayerIds.includes(playerId)) {
-      context.state.flipSevenPlayerIds.push(playerId)
-      emit(context, { type: "FLIP_SEVEN_ACHIEVED", playerId })
+    if (!context.state.favourOfOlympusPlayerIds.includes(playerId)) {
+      context.state.favourOfOlympusPlayerIds.push(playerId)
+      emit(context, { type: "FAVOUR_OF_OLYMPUS_ACHIEVED", playerId })
     }
   }
   if (achievers.length > 0) context.state.roundEndRequested = true
@@ -1064,7 +1064,7 @@ function finishRound(context: EngineContext): void {
   state.initialDealSeatsRemaining = []
 
   for (const player of state.players) {
-    const score = calculateRoundScore(player, state.flipSevenPlayerIds.includes(player.id))
+    const score = calculateRoundScore(player, state.favourOfOlympusPlayerIds.includes(player.id))
     player.totalScore += score
     emit(context, { type: "ROUND_SCORE_AWARDED", playerId: player.id, score })
   }

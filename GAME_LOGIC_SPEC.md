@@ -1,10 +1,10 @@
-# Flip 7 Web Game — Rules and Logic Specification
+# Favour of Olympus Web Game — Rules and Logic Specification
 
 Status: base-game reference. For the custom Greek-god version, `GOD_CARDS_GAME_LOGIC.md` is canonical and replaces this document's Action Card rules, deck total, duplicate protection, Flip Three handling, scoring additions, and related tests.
 
 > Do not implement the Action Card sections below for the Greek-god version. Use [GOD_CARDS_GAME_LOGIC.md](./GOD_CARDS_GAME_LOGIC.md) for all special-card behavior and edge-case resolution.
 
-This document describes game mechanics and not the publisher's artwork, wording, or branding. Before publishing a commercial or public clone, use an original name and original visual assets unless you have permission to use the Flip 7 trademark and copyrighted assets.
+This document describes the mechanics of Favour of Olympus and its original visual identity.
 
 ## 1. Game objective
 
@@ -13,7 +13,7 @@ Players accumulate points over multiple rounds. During a round, a player collect
 A round ends when:
 
 1. No active players remain; or
-2. A player has seven unique number cards. This is a Flip 7 and ends the round immediately.
+2. A player has seven unique number cards. This is a Favour of Olympus and ends the round immediately.
 
 After scoring a completed round, the game ends if there is one unique highest-scoring player and that player's total is at least 200. If the highest total is tied, all players continue into another round.
 
@@ -135,7 +135,7 @@ interface GameState {
   initialDealSeatsRemaining: number[];
   pendingAction: PendingAction | null;
   flipThreeStack: FlipThreeContext[];
-  flipSevenPlayerId: string | null;
+  favourOfOlympusPlayerId: string | null;
   winnerId: string | null;
   eventLog: GameEvent[];
   revision: number;
@@ -269,9 +269,9 @@ function resolveNumberCard(playerId: string, card: NumberCard): ResolutionResult
   player.numberCards.push(card);
 
   if (countUniqueNumbers(player) === 7) {
-    state.flipSevenPlayerId = playerId;
-    emit({ type: "FLIP_SEVEN_ACHIEVED", playerId });
-    return { outcome: "flipSeven" };
+    state.favourOfOlympusPlayerId = playerId;
+    emit({ type: "FAVOUR_OF_OLYMPUS_ACHIEVED", playerId });
+    return { outcome: "favourOfOlympus" };
   }
 
   return { outcome: "resolved" };
@@ -291,7 +291,7 @@ function resolveModifierCard(playerId: string, card: ModifierCard) {
 }
 ```
 
-Modifiers never bust and do not count toward Flip 7.
+Modifiers never bust and do not count toward Favour of Olympus.
 
 ### Second Chance card
 
@@ -343,7 +343,7 @@ Freeze banks the target's current points and removes them from the round. Second
 
 The player dealt Flip Three chooses any active target. The target must accept the next three cards, revealed one at a time.
 
-Stop early if the target busts or any player achieves Flip 7. Otherwise all three revealed cards count, including number, modifier, and action cards.
+Stop early if the target busts or any player achieves Favour of Olympus. Otherwise all three revealed cards count, including number, modifier, and action cards.
 
 Important action timing inside Flip Three:
 
@@ -351,7 +351,7 @@ Important action timing inside Flip Three:
 - A revealed Freeze or Flip Three is added to a FIFO queue.
 - Finish the current three forced draws before resolving queued Freeze/Flip Three cards.
 - If the forced target busts, abandon their queued Freeze/Flip Three effects without resolving them. Keep those physical cards in the busted player's in-play area until round cleanup; they must not become eligible for a mid-round reshuffle.
-- If Flip 7 occurs, abandon every unresolved action because the round ends immediately.
+- If Favour of Olympus occurs, abandon every unresolved action because the round ends immediately.
 - Resolve queued actions in reveal order. Each action's dealt player chooses its target when that queued action reaches the front.
 
 ```ts
@@ -368,7 +368,7 @@ function resolveFlipThree(targetId: string, card: FlipThreeCard) {
 
 function continueFlipThree(context: FlipThreeContext) {
   while (context.cardsRemaining > 0) {
-    if (roundHasFlipSeven()) return endRoundImmediately();
+    if (roundHasFavourOfOlympus()) return endRoundImmediately();
     if (!isActive(context.targetId)) return abandonQueuedActionsInPlay(context);
 
     context.cardsRemaining--;
@@ -387,7 +387,7 @@ function continueFlipThree(context: FlipThreeContext) {
     }
 
     const result = resolveAlreadyDrawnCard(context.targetId, card, "flipThree");
-    if (result.outcome === "flipSeven") return endRoundImmediately();
+    if (result.outcome === "favourOfOlympus") return endRoundImmediately();
     if (result.outcome === "busted") return abandonQueuedActionsInPlay(context);
     if (result.requiresInput) return; // resume here after target selection
   }
@@ -407,7 +407,7 @@ At the start of a round:
 2. Set the deal order to every seat beginning with the dealer and moving left/clockwise.
 3. Deal one card face up to each player in order.
 4. If an action appears, pause the deal, resolve the entire action chain, then resume at the next undealt seat.
-5. If Flip 7 occurs during an action chain, end the round immediately.
+5. If Favour of Olympus occurs during an action chain, end the round immediately.
 6. After the initial deal completes, begin turn choices with the dealer, or the next active seat if the dealer is no longer active.
 
 Implementation policy for a rare edge case: if a player is frozen or busted by an action before their scheduled initial card, skip their scheduled initial deal because they are no longer active. Record this as an explicit product rule and cover it with a test; the printed rules do not spell out this exact timing.
@@ -464,11 +464,11 @@ create game and seat players
             -> current active player chooses HIT or STAY
             -> if STAY: lock score; mark stayed
             -> if HIT: reveal one card
-                 -> number: keep, spend Second Chance, bust, or Flip 7
+                 -> number: keep, spend Second Chance, bust, or Favour of Olympus
                  -> modifier: keep
                  -> action: chooser selects active target; resolve effect
             -> finish all nested/queued effects
-            -> if Flip 7: end immediately
+            -> if Favour of Olympus: end immediately
             -> if no active players: end
             -> otherwise advance to next active seat
        -> calculate and add every player's round score
@@ -481,11 +481,11 @@ create game and seat players
 
 ```ts
 function roundShouldEnd(): boolean {
-  return state.flipSevenPlayerId !== null || activePlayers().length === 0;
+  return state.favourOfOlympusPlayerId !== null || activePlayers().length === 0;
 }
 ```
 
-Flip 7 is an immediate interrupt. Once it occurs:
+Favour of Olympus is an immediate interrupt. Once it occurs:
 
 - Do not reveal any remaining Flip Three cards.
 - Do not resolve queued actions.
@@ -502,10 +502,10 @@ Scoring order is mandatory:
 1. Sum number cards.
 2. If the player has `x2`, multiply only the number-card sum by two.
 3. Add all `+N` modifiers.
-4. Add 15 only to the player who achieved Flip 7.
+4. Add 15 only to the player who achieved Favour of Olympus.
 
 ```ts
-function calculateRoundScore(player: PlayerState, achievedFlipSeven: boolean): number {
+function calculateRoundScore(player: PlayerState, achievedFavourOfOlympus: boolean): number {
   if (player.roundStatus === "busted") return 0;
 
   const numberTotal = player.numberCards.reduce((sum, card) => sum + card.value, 0);
@@ -514,7 +514,7 @@ function calculateRoundScore(player: PlayerState, achievedFlipSeven: boolean): n
     .filter((card): card is AddModifierCard => card.operation === "add")
     .reduce((sum, card) => sum + card.value, 0);
 
-  return numberTotal * (hasX2 ? 2 : 1) + addTotal + (achievedFlipSeven ? 15 : 0);
+  return numberTotal * (hasX2 ? 2 : 1) + addTotal + (achievedFavourOfOlympus ? 15 : 0);
 }
 ```
 
@@ -534,7 +534,7 @@ function scoreRound() {
   for (const player of state.players) {
     const score = calculateRoundScore(
       player,
-      player.id === state.flipSevenPlayerId
+      player.id === state.favourOfOlympusPlayerId
     );
     player.totalScore += score;
     emit({ type: "ROUND_SCORE_AWARDED", playerId: player.id, score });
@@ -596,7 +596,7 @@ resolveModifierCard(state, playerId, card)
 resolveActionCard(state, chooserId, card, source)
 resolveFreeze(state, targetId, card)
 resolveFlipThree(state, targetId, card)
-calculateRoundScore(player, achievedFlipSeven)
+calculateRoundScore(player, achievedFavourOfOlympus)
 checkRoundEnd(state)
 scoreRound(state)
 findWinner(players, targetScore)
@@ -629,7 +629,7 @@ type GameEvent =
   | { type: "PLAYER_STAYED"; playerId: string; score: number }
   | { type: "PLAYER_FROZEN"; targetId: string; score: number }
   | { type: "FLIP_THREE_STARTED"; targetId: string }
-  | { type: "FLIP_SEVEN_ACHIEVED"; playerId: string }
+  | { type: "FAVOUR_OF_OLYMPUS_ACHIEVED"; playerId: string }
   | { type: "TURN_STARTED"; playerId: string }
   | { type: "ROUND_SCORE_AWARDED"; playerId: string; score: number }
   | { type: "DECK_RESHUFFLED" }
@@ -664,7 +664,7 @@ type GameEvent =
 - Freeze locks the current score and makes the target inactive.
 - Flip Three counts modifiers and actions among its three cards.
 - Flip Three stops on bust.
-- Flip Three stops on Flip 7.
+- Flip Three stops on Favour of Olympus.
 - Second Chance drawn during Flip Three can protect a later forced draw.
 - Freeze and Flip Three drawn during Flip Three wait until all forced draws finish.
 - Multiple queued actions resolve in reveal order.
@@ -683,9 +683,9 @@ type GameEvent =
 
 ### Scoring and game-end tests
 
-- Scoring follows `(number sum * x2) + additive modifiers + Flip 7 bonus`.
+- Scoring follows `(number sum * x2) + additive modifiers + Favour of Olympus bonus`.
 - `x2` does not double additive modifiers or the 15-point bonus.
-- Only the Flip 7 achiever gets 15 points.
+- Only the Favour of Olympus achiever gets 15 points.
 - Bust always scores zero.
 - A unique leader below 200 does not win.
 - A unique leader at or above 200 wins.
@@ -715,7 +715,3 @@ interface GameConfig {
 Timeout/disconnection behavior is not specified by the tabletop rules. Choose and display it before a match. A safe default is to pause private games and auto-stay timed public games when staying is legal; if a no-card player times out, the server must hit or replace them with a bot because Stay is illegal.
 
 ## Sources
-
-- Flip 7 Rulebook, ruleset edition 3.1: https://thegamerules.com/rulebooks/FLIP-7-Rulebook-en.pdf
-- Publisher FAQ: https://theop.games/pages/flip-7-faqs
-- Asmodee product/rules page: https://www.asmodee.ca/en/product/flip-7/

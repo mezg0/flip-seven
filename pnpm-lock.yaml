@@ -29,10 +29,10 @@ importers:
 
   apps/client:
     dependencies:
-      '@flip-seven/content':
+      '@favour-of-olympus/content':
         specifier: workspace:*
         version: link:../../packages/content
-      '@flip-seven/protocol':
+      '@favour-of-olympus/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       motion:
@@ -72,10 +72,10 @@ importers:
 
   apps/server:
     dependencies:
-      '@flip-seven/game':
+      '@favour-of-olympus/game':
         specifier: workspace:*
         version: link:../../packages/game
-      '@flip-seven/protocol':
+      '@favour-of-olympus/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol
       effect:
@@ -118,7 +118,7 @@ importers:
 
   packages/protocol:
     dependencies:
-      '@flip-seven/game':
+      '@favour-of-olympus/game':
         specifier: workspace:*
         version: link:../game
       effect:

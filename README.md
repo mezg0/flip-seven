@@ -1,6 +1,6 @@
-# Flip Seven
+# Favour of Olympus
 
-Online multiplayer Flip Seven monorepo.
+Online multiplayer Favour of Olympus monorepo.
 
 ## Workspace
 

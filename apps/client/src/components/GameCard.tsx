@@ -1,4 +1,4 @@
-import type { CardDefinition } from "@flip-seven/content"
+import type { CardDefinition } from "@favour-of-olympus/content"
 import "./GameCard.css"
 
 export interface GameCardProps {

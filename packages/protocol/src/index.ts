@@ -1,4 +1,4 @@
-import type { GameEvent, GameRuleErrorCode, PublicGameState } from "@flip-seven/game"
+import type { GameEvent, GameRuleErrorCode, PublicGameState } from "@favour-of-olympus/game"
 import { Schema } from "effect"
 
 export const ServerStatus = Schema.Struct({

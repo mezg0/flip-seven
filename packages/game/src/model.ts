@@ -210,7 +210,7 @@ export type GameEvent =
   | { readonly type: "PLAYER_BUSTED"; readonly playerId: string; readonly duplicateValue: number }
   | { readonly type: "PLAYER_STAYED"; readonly playerId: string; readonly score: number }
   | { readonly type: "PLAYER_FORCED_TO_STAY"; readonly targetId: string; readonly score: number }
-  | { readonly type: "FLIP_SEVEN_ACHIEVED"; readonly playerId: string }
+  | { readonly type: "FAVOUR_OF_OLYMPUS_ACHIEVED"; readonly playerId: string }
   | { readonly type: "TURN_STARTED"; readonly playerId: string }
   | { readonly type: "ROUND_SCORE_AWARDED"; readonly playerId: string; readonly score: number }
   | { readonly type: "DECK_RESHUFFLED" }
@@ -231,7 +231,7 @@ export interface GameState {
   resolutionStack: ResolutionFrame[]
   resolutionTasks: ResolutionTask[]
   godResolutionHistory: GodResolutionRecord[]
-  flipSevenPlayerIds: string[]
+  favourOfOlympusPlayerIds: string[]
   roundEndRequested: boolean
   winnerId: string | null
   eventLog: GameEvent[]
@@ -301,7 +301,7 @@ export interface PublicGameState {
   readonly discardCount: number
   readonly roundNumber: number
   readonly pendingChoice: PublicPendingChoice | null
-  readonly flipSevenPlayerIds: readonly string[]
+  readonly favourOfOlympusPlayerIds: readonly string[]
   readonly winnerId: string | null
   readonly revision: GameRevision
 }

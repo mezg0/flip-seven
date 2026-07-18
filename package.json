@@ -1,5 +1,5 @@
 {
-  "name": "flip-seven",
+  "name": "favour-of-olympus",
   "private": true,
   "packageManager": "pnpm@11.9.0",
   "engines": {
@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "pnpm --recursive --if-present build",
-    "dev": "pnpm --parallel --filter @flip-seven/client --filter @flip-seven/server dev",
+    "dev": "pnpm --parallel --filter @favour-of-olympus/client --filter @favour-of-olympus/server dev",
     "test": "pnpm --recursive --if-present test",
     "typecheck": "pnpm --recursive --if-present typecheck"
   },

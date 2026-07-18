@@ -9,8 +9,8 @@ import {
   type GameEvent,
   type GameState,
   type PlayerInput,
-} from "@flip-seven/game"
-import type { GameSnapshot, PlayerCredential, PlayerInvitation } from "@flip-seven/protocol"
+} from "@favour-of-olympus/game"
+import type { GameSnapshot, PlayerCredential, PlayerInvitation } from "@favour-of-olympus/protocol"
 import { Data, Effect, SynchronizedRef } from "effect"
 
 export type RegistryErrorCode =
