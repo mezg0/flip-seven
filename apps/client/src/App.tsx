@@ -16,6 +16,7 @@ import "./components/GameTable.css"
 import "./components/GodReveal.css"
 
 const serverUrl = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3000"
+const minimumPlayers = 2
 const maximumPlayers = 4
 const mythicAdjectives = ["Golden", "Stormborn", "Moonlit", "Swift", "Brazen", "Starlit", "Wild", "Laurel"] as const
 const mythicFigures = ["Oracle", "Titan", "Nymph", "Voyager", "Champion", "Sphinx", "Muse", "Griffin"] as const
@@ -131,7 +132,7 @@ export function App() {
 
   const playerId = useMemo(() => toPlayerId(username), [username])
   const isHost = snapshot?.state.players[0]?.id === session?.playerId
-  const canStart = isHost && snapshot !== null && snapshot.state.players.length >= 3
+  const canStart = isHost && snapshot !== null && snapshot.state.players.length >= minimumPlayers
 
   function remember(gameId: string, playerId: string, accessToken: string) {
     const nextSession = { gameId, playerId, accessToken }
@@ -485,9 +486,9 @@ function Lobby({ snapshot, roomCode, isHost, canStart, error, onStart, onEnd }: 
     <header className="mx-auto flex w-full max-w-4xl items-center justify-between gap-5"><div className="font-display text-2xl font-bold">Flip Seven</div><span className="rounded-full bg-bronze/15 px-3 py-1 text-sm font-bold text-bronze">{players.length} / {maximumPlayers} players</span></header>
     <section className="mx-auto mt-16 w-full max-w-4xl" aria-labelledby="room-title">
       <p className="text-sm font-bold text-bronze">Room code</p>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-5"><div><h1 id="room-title" className="font-display text-5xl font-bold tracking-[-0.025em]">{roomCode}</h1><p className="mt-3 text-slate-300">Share this code with your friends. The table seats up to four.</p></div>{isHost && <div className="flex gap-3">{!hasStarted && <button type="button" onClick={onStart} disabled={!canStart} className="rounded-xl bg-bronze px-5 py-3 font-bold text-night transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-bronze focus:ring-offset-2 focus:ring-offset-night disabled:cursor-not-allowed disabled:opacity-45">{canStart ? "Start game" : `Need ${3 - players.length} more player${players.length === 2 ? "" : "s"}`}</button>}<button type="button" onClick={onEnd} className="rounded-xl border border-red-400/60 px-4 py-3 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button></div>}</div>
+      <div className="mt-2 flex flex-wrap items-end justify-between gap-5"><div><h1 id="room-title" className="font-display text-5xl font-bold tracking-[-0.025em]">{roomCode}</h1><p className="mt-3 text-slate-300">Share this code with your friends. The table seats up to four.</p></div>{isHost && <div className="flex gap-3">{!hasStarted && <button type="button" onClick={onStart} disabled={!canStart} className="rounded-xl bg-bronze px-5 py-3 font-bold text-night transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-bronze focus:ring-offset-2 focus:ring-offset-night disabled:cursor-not-allowed disabled:opacity-45">{canStart ? "Start game" : "Need 1 more player"}</button>}<button type="button" onClick={onEnd} className="rounded-xl border border-red-400/60 px-4 py-3 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button></div>}</div>
       <ol className="mt-12 grid gap-3 sm:grid-cols-2">{players.map((player) => <li key={player.id} className="flex items-center gap-4 rounded-xl bg-slate-900 px-5 py-4"><span className="grid size-9 place-items-center rounded-full bg-bronze text-sm font-extrabold text-night">{player.seat + 1}</span><div><p className="font-bold text-white">{player.name}</p><p className="text-sm text-slate-400">{player.seat === 0 ? "Host" : "Ready"}</p></div></li>)}{emptySeats.map((_, index) => <li key={`empty-${index}`} className="flex items-center gap-4 rounded-xl border border-dashed border-slate-700 px-5 py-4 text-slate-400"><span className="grid size-9 place-items-center rounded-full border border-slate-700 text-sm">+</span>Waiting for player</li>)}</ol>
-      {!isHost && !hasStarted && <p className="mt-8 text-sm text-slate-300">Waiting for the host to start once at least three players have joined.</p>}
+      {!isHost && !hasStarted && <p className="mt-8 text-sm text-slate-300">Waiting for the host to start once another player has joined.</p>}
       {hasStarted && <p className="mt-8 rounded-lg bg-emerald-950/50 px-4 py-3 text-sm font-medium text-emerald-200">The game has started. Gameplay table coming next.</p>}
       {error && <p className="mt-5 rounded-lg bg-red-950/60 px-4 py-3 text-sm font-medium text-red-200" role="alert">{error}</p>}
     </section>

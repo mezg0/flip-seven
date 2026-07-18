@@ -119,6 +119,7 @@ export function applyCommand(state: GameState, command: GameCommand): ApplyComma
       break
     case "ADVANCE_ROUND":
       advanceRound(context)
+      runResolution(context)
       break
     case "SUBMIT_CHOICE":
       submitChoice(context, command.choiceId, command.selection)
