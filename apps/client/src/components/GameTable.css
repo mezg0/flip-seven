@@ -361,13 +361,12 @@
 .god-choice__order button:disabled { cursor: not-allowed; opacity: 0.35; }
 
 .round-summary {
-  position: absolute;
-  z-index: 12;
+  position: fixed;
+  z-index: 40;
   inset: 0;
   display: grid;
   place-items: center;
   padding: 1.25rem;
-  border-radius: inherit;
   background: oklch(0.035 0.014 250 / 74%);
 }
 

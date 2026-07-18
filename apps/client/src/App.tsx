@@ -488,12 +488,12 @@ function GameTable({ snapshot, playerId, isHost, roundGods, activeDeal, pendingD
           {activeDeal !== undefined && landingDealKey !== activeDeal.key && <DealingCard key={activeDeal.key} deal={activeDeal} reducedMotion={reducedMotion} />}
           {showTurnChoice && <aside className="game-action-panel" aria-live="polite"><p className="game-action-panel__eyebrow">Your turn</p><h2>Your choice</h2>{you === undefined ? <p className="game-action-panel__copy">Waiting for your seat.</p> : isYourTurn ? <><p className="game-action-panel__copy">Press your luck, or preserve this round’s score.</p><div className="turn-actions"><button type="button" onClick={() => onCommand("HIT")} className="turn-action turn-action--hit"><span>Hit</span><small>Draw a card</small></button><button type="button" onClick={() => onCommand("STAY")} disabled={you.numberCards.length === 0} className="turn-action turn-action--stay"><span>Stay</span><small>Bank your score</small></button></div></> : null}{error && <p className="game-action-panel__error" role="alert">{error}</p>}</aside>}
           {pendingChoice !== null && <div className="god-choice-overlay"><aside className="game-action-panel game-action-panel--god" role="dialog" aria-modal="true" aria-labelledby="god-choice-title"><p className="game-action-panel__eyebrow game-action-panel__god">{godCardDefinition(pendingChoice.god).deityName}</p><h2 id="god-choice-title">Choose an action</h2><GodChoicePanel choice={pendingChoice} players={state.players} onSubmit={onSubmitChoice} />{error && <p className="game-action-panel__error" role="alert">{error}</p>}</aside></div>}
-          <AnimatePresence>
-            {state.phase === "roundScoring" && <RoundScoringOverlay state={state} isHost={isHost} error={error} onAdvance={() => onCommand("ADVANCE_ROUND")} onInspectCards={(cards, playerName) => setInspectedHand({ cards, playerName })} />}
-          </AnimatePresence>
         </LayoutGroup>
       </div>
     </section>
+    <AnimatePresence>
+      {state.phase === "roundScoring" && <RoundScoringOverlay state={state} isHost={isHost} error={error} onAdvance={() => onCommand("ADVANCE_ROUND")} onInspectCards={(cards, playerName) => setInspectedHand({ cards, playerName })} />}
+    </AnimatePresence>
     <AnimatePresence>
       {inspectedHand !== null && <HandInspectionOverlay cards={inspectedHand.cards} playerName={inspectedHand.playerName} onClose={() => setInspectedHand(null)} />}
     </AnimatePresence>
