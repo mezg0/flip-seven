@@ -70,6 +70,25 @@ export function createGame(
   }
 }
 
+/** Adds a player while the game is still waiting in its lobby. */
+export function addPlayerToLobby(state: GameState, player: Omit<PlayerInput, "seat">): GameState {
+  if (state.phase !== "lobby") {
+    throw new GameRuleError("COMMAND_NOT_ALLOWED", "Players can only join before the game starts")
+  }
+  if (state.players.length >= state.config.maximumPlayers) {
+    throw new GameRuleError("INVALID_PLAYERS", `A game supports at most ${state.config.maximumPlayers} players`)
+  }
+  if (state.players.some((existing) => existing.id === player.id)) {
+    throw new GameRuleError("INVALID_PLAYERS", "That player has already joined this game")
+  }
+
+  const nextState = structuredClone(state)
+  const nextSeat = Math.max(...nextState.players.map((existing) => existing.seat)) + 1
+  nextState.players.push(createPlayerState({ ...player, seat: nextSeat }))
+  nextState.revision += 1
+  return nextState
+}
+
 export function applyCommand(state: GameState, command: GameCommand): ApplyCommandResult {
   validateCommand(state, command)
   const nextState = structuredClone(state)

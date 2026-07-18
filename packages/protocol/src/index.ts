@@ -1,4 +1,3 @@
-import { defaultGameConfig } from "@flip-seven/game"
 import type { GameEvent, GameRuleErrorCode, PublicGameState } from "@flip-seven/game"
 import { Schema } from "effect"
 
@@ -12,12 +11,6 @@ const GameId = Schema.NonEmptyString.pipe(Schema.maxLength(128))
 const PlayerId = Schema.NonEmptyString.pipe(Schema.maxLength(128))
 const PlayerName = Schema.NonEmptyString.pipe(Schema.maxLength(64))
 const AccessToken = Schema.NonEmptyString.pipe(Schema.maxLength(256))
-
-const PlayerInput = Schema.Struct({
-  id: PlayerId,
-  name: PlayerName,
-  seat: Schema.NonNegativeInt,
-})
 
 const StartGameCommand = Schema.Struct({
   type: Schema.Literal("START_GAME"),
@@ -57,13 +50,18 @@ export type GameCommand = typeof GameCommand.Type
 export const GameCreateRequest = Schema.Struct({
   gameId: GameId,
   creatorId: PlayerId,
-  players: Schema.Array(PlayerInput).pipe(
-    Schema.minItems(defaultGameConfig.minimumPlayers),
-    Schema.maxItems(defaultGameConfig.maximumPlayers),
-  ),
+  creatorName: PlayerName,
 })
 
 export type GameCreateRequest = typeof GameCreateRequest.Type
+
+export const GameJoinRequest = Schema.Struct({
+  gameId: GameId,
+  playerId: PlayerId,
+  playerName: PlayerName,
+})
+
+export type GameJoinRequest = typeof GameJoinRequest.Type
 
 export const GameClaimRequest = Schema.Struct({
   gameId: GameId,
@@ -80,6 +78,13 @@ export const GameLookupRequest = Schema.Struct({
 
 export type GameLookupRequest = typeof GameLookupRequest.Type
 
+export const GameEndRequest = Schema.Struct({
+  gameId: GameId,
+  accessToken: AccessToken,
+})
+
+export type GameEndRequest = typeof GameEndRequest.Type
+
 export const GameCommandRequest = Schema.Struct({
   gameId: GameId,
   accessToken: AccessToken,
@@ -94,6 +99,9 @@ export type GameProtocolErrorCode =
   | "GAME_NOT_FOUND"
   | "GAME_ALREADY_EXISTS"
   | "UNAUTHORIZED"
+  | "LOBBY_FULL"
+  | "LOBBY_CLOSED"
+  | "PLAYER_ALREADY_JOINED"
 
 export type GameProtocolError = {
   readonly code: GameProtocolErrorCode
@@ -107,6 +115,10 @@ export type GameSnapshot = {
 
 export type GameResponse =
   | { readonly ok: true; readonly snapshot: GameSnapshot }
+  | { readonly ok: false; readonly error: GameProtocolError }
+
+export type GameEndResponse =
+  | { readonly ok: true }
   | { readonly ok: false; readonly error: GameProtocolError }
 
 export type PlayerCredential = {
@@ -135,11 +147,14 @@ export type GameClaimResponse =
 export interface ClientToServerEvents {
   "system:status": (acknowledge: (status: ServerStatus) => void) => void
   "game:create": (payload: unknown, acknowledge: (response: GameCreateResponse) => void) => void
+  "game:join": (payload: unknown, acknowledge: (response: GameClaimResponse) => void) => void
   "game:claim": (payload: unknown, acknowledge: (response: GameClaimResponse) => void) => void
   "game:get": (payload: unknown, acknowledge: (response: GameResponse) => void) => void
+  "game:end": (payload: unknown, acknowledge: (response: GameEndResponse) => void) => void
   "game:command": (payload: unknown, acknowledge: (response: GameResponse) => void) => void
 }
 
 export interface ServerToClientEvents {
   "game:snapshot": (snapshot: GameSnapshot) => void
+  "game:ended": () => void
 }

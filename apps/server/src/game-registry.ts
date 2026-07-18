@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import {
   GameRuleError,
+  addPlayerToLobby,
   applyCommand,
   createGame,
   toPublicGameState,
@@ -12,7 +13,13 @@ import {
 import type { GameSnapshot, PlayerCredential, PlayerInvitation } from "@flip-seven/protocol"
 import { Data, Effect, SynchronizedRef } from "effect"
 
-export type RegistryErrorCode = "GAME_NOT_FOUND" | "GAME_ALREADY_EXISTS" | "UNAUTHORIZED"
+export type RegistryErrorCode =
+  | "GAME_NOT_FOUND"
+  | "GAME_ALREADY_EXISTS"
+  | "UNAUTHORIZED"
+  | "LOBBY_FULL"
+  | "LOBBY_CLOSED"
+  | "PLAYER_ALREADY_JOINED"
 
 export class RegistryError extends Data.TaggedError("RegistryError")<{
   readonly code: RegistryErrorCode
@@ -70,7 +77,7 @@ export class GameRegistry {
   create(
     gameId: string,
     creatorId: string,
-    players: readonly PlayerInput[],
+    creatorName: string,
   ): Effect.Effect<CreatedGame, RegistryError | GameRuleError> {
     return SynchronizedRef.modifyEffect<
       ReadonlyMap<string, RegisteredGame>,
@@ -84,12 +91,7 @@ export class GameRegistry {
           message: `Game ${gameId} already exists`,
         }))
       }
-      if (!players.some((player) => player.id === creatorId)) {
-        return Effect.fail(new RegistryError({
-          code: "UNAUTHORIZED",
-          message: "The game creator must be one of its players",
-        }))
-      }
+      const players: readonly PlayerInput[] = [{ id: creatorId, name: creatorName, seat: 0 }]
 
       return attemptGameOperation(() => createGame(gameId, players, this.#createSeed())).pipe(
         Effect.map((state) => {
@@ -106,6 +108,38 @@ export class GameRegistry {
             credential: initialAccess.credential,
             invitations: initialAccess.invitations,
           }, nextGames] as const
+        }),
+      )
+    })
+  }
+
+  join(
+    gameId: string,
+    playerId: string,
+    playerName: string,
+  ): Effect.Effect<ClaimedGame, RegistryError | GameRuleError> {
+    return SynchronizedRef.modifyEffect(this.#games, (games) => {
+      const game = games.get(gameId)
+      if (game === undefined) return Effect.fail(gameNotFound(gameId))
+      if (game.state.phase !== "lobby") {
+        return Effect.fail(new RegistryError({ code: "LOBBY_CLOSED", message: "This game has already started" }))
+      }
+      if (game.state.players.some((player) => player.id === playerId)) {
+        return Effect.fail(new RegistryError({ code: "PLAYER_ALREADY_JOINED", message: "This player has already joined the lobby" }))
+      }
+      if (game.state.players.length >= game.state.config.maximumPlayers) {
+        return Effect.fail(new RegistryError({ code: "LOBBY_FULL", message: "This lobby already has four players" }))
+      }
+
+      return attemptGameOperation(() => addPlayerToLobby(game.state, { id: playerId, name: playerName })).pipe(
+        Effect.map((state) => {
+          const usedSecrets = new Set([...game.playersByAccessToken.keys(), ...game.playersByInvitationToken.keys()])
+          const accessToken = createUniqueSecret(this.#createSecret, usedSecrets)
+          const playersByAccessToken = new Map(game.playersByAccessToken)
+          playersByAccessToken.set(accessToken, playerId)
+          const nextGames = new Map(games)
+          nextGames.set(gameId, { ...game, state, playersByAccessToken })
+          return [{ snapshot: snapshot(state, []), credential: { playerId, accessToken } }, nextGames] as const
         }),
       )
     })
@@ -161,6 +195,21 @@ export class GameRegistry {
           : Effect.fail(unauthorized())
       }),
     )
+  }
+
+  end(gameId: string, accessToken: string): Effect.Effect<void, RegistryError> {
+    return SynchronizedRef.modifyEffect(this.#games, (games) => {
+      const game = games.get(gameId)
+      if (game === undefined) return Effect.fail(gameNotFound(gameId))
+      const playerId = game.playersByAccessToken.get(accessToken)
+      const host = game.state.players.find((player) => player.seat === 0)
+      if (playerId === undefined || playerId !== host?.id) {
+        return Effect.fail(new RegistryError({ code: "UNAUTHORIZED", message: "Only the host can end this game" }))
+      }
+      const nextGames = new Map(games)
+      nextGames.delete(gameId)
+      return Effect.succeed([undefined, nextGames] as const)
+    })
   }
 
   submit(

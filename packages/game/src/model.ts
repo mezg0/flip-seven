@@ -87,7 +87,7 @@ export interface GameConfig {
 export const defaultGameConfig: GameConfig = {
   targetScore: 200,
   minimumPlayers: 3,
-  maximumPlayers: 94,
+  maximumPlayers: 4,
   actionChoiceTimeoutMs: 30_000,
   turnChoiceTimeoutMs: 30_000,
   disconnectedPlayerPolicy: "pause",

@@ -4,6 +4,8 @@ import {
   GameCommandRequest,
   GameClaimRequest,
   GameCreateRequest,
+  GameEndRequest,
+  GameJoinRequest,
   GameLookupRequest,
   type ClientToServerEvents,
   type GameCreateResponse,
@@ -42,12 +44,26 @@ const program = Effect.gen(function*() {
         socket.on("game:create", (payload, acknowledge) => {
           runEffectRequest(
             Schema.decodeUnknown(GameCreateRequest)(payload).pipe(
-              Effect.flatMap((request) => games.create(request.gameId, request.creatorId, request.players)),
+              Effect.flatMap((request) => games.create(request.gameId, request.creatorId, request.creatorName)),
             ),
             (error) => acknowledge(failure(error)),
             (created) => {
               void socket.join(created.snapshot.state.id)
               acknowledge(gameCreated(created))
+            },
+          )
+        })
+
+        socket.on("game:join", (payload, acknowledge) => {
+          runEffectRequest(
+            Schema.decodeUnknown(GameJoinRequest)(payload).pipe(
+              Effect.flatMap((request) => games.join(request.gameId, request.playerId, request.playerName)),
+            ),
+            (error) => acknowledge(failure(error)),
+            (joined) => {
+              void socket.join(joined.snapshot.state.id)
+              io.to(joined.snapshot.state.id).emit("game:snapshot", joined.snapshot)
+              acknowledge(gameClaimed(joined))
             },
           )
         })
@@ -78,6 +94,21 @@ const program = Effect.gen(function*() {
             (snapshot) => {
               void socket.join(snapshot.state.id)
               acknowledge({ ok: true, snapshot })
+            },
+          )
+        })
+
+        socket.on("game:end", (payload, acknowledge) => {
+          runEffectRequest(
+            Schema.decodeUnknown(GameEndRequest)(payload).pipe(
+              Effect.flatMap((request) => games.end(request.gameId, request.accessToken).pipe(
+                Effect.as(request.gameId),
+              )),
+            ),
+            (error) => acknowledge(failure(error)),
+            (gameId) => {
+              io.to(gameId).emit("game:ended")
+              acknowledge({ ok: true })
             },
           )
         })
