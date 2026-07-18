@@ -323,7 +323,7 @@ function TitleScreen({ status, onEnter }: { readonly status: ServerStatus; reado
         <span>Enter Olympus</span>
         <ChevronIcon />
       </button>
-      <small>3–4 players · Online multiplayer</small>
+      <small>2–4 players · Online multiplayer</small>
     </div>
   </main>
 }
@@ -417,7 +417,7 @@ function Lobby({ snapshot, roomCode, isHost, canStart, error, onStart, onEnd }: 
         </div>
 
         <div className="lobby-roster__heading">
-          <div><p>Seats at the table</p><span>{players.length >= 3 ? "The table is ready" : `Waiting for ${playersNeeded} more player${playersNeeded === 1 ? "" : "s"}`}</span></div>
+          <div><p>Seats at the table</p><span>{players.length >= minimumPlayers ? "The table is ready" : `Waiting for ${playersNeeded} more player${playersNeeded === 1 ? "" : "s"}`}</span></div>
           <div className="lobby-progress" aria-hidden="true">{Array.from({ length: maximumPlayers }, (_, index) => <span key={index} className={index < players.length ? "is-filled" : ""} />)}</div>
         </div>
 
