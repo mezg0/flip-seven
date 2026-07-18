@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 700" role="img" aria-labelledby="title description">
+  <title id="title">Number card artwork placeholder</title>
+  <desc id="description">A neutral placeholder for future demigod artwork.</desc>
+  <rect width="500" height="700" fill="#202b35" />
+  <circle cx="250" cy="265" r="105" fill="#34434f" />
+  <path d="M100 620c22-132 102-202 150-202s128 70 150 202" fill="#34434f" />
+  <text x="250" y="655" fill="#9eabb4" font-family="system-ui, sans-serif" font-size="24" text-anchor="middle">
+    DEMIGOD ART
+  </text>
+</svg>

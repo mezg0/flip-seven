@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 700" role="img" aria-labelledby="title description">
+  <title id="title">Card-back placeholder</title>
+  <desc id="description">A geometric placeholder for the future card-back design.</desc>
+  <rect width="500" height="700" fill="#151f28" />
+  <rect x="24" y="24" width="452" height="652" rx="18" fill="none" stroke="#d2a75d" stroke-width="8" />
+  <circle cx="250" cy="350" r="120" fill="none" stroke="#d2a75d" stroke-width="8" />
+  <path d="m250 190 35 105 110 2-88 65 32 106-89-62-89 62 32-106-88-65 110-2z" fill="none" stroke="#d2a75d" stroke-linejoin="round" stroke-width="8" />
+</svg>
