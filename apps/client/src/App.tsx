@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { io } from "socket.io-client"
-import { numberCardDefinition } from "@flip-seven/content"
-import type { AssetKey, CardDefinition, PowerCardDefinition } from "@flip-seven/content"
+import { numberCardDefinition } from "@favour-of-olympus/content"
+import type { AssetKey, CardDefinition, PowerCardDefinition } from "@favour-of-olympus/content"
 import type {
   GameClaimResponse,
   GameCreateResponse,
