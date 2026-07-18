@@ -30,6 +30,17 @@ const samplePowerCard = {
   theme: "storm",
 } satisfies CardDefinition
 
+const sampleNumberCard = {
+  kind: "number",
+  value: 7,
+  figureName: "Achilles",
+  typography: {
+    valueSize: "large",
+    nameSize: "medium",
+  },
+  artwork: "cards/numbers/placeholder.svg",
+} satisfies CardDefinition
+
 export function App() {
   const [status, setStatus] = useState<ServerStatus>({ status: "connecting" })
 
@@ -75,10 +86,14 @@ export function App() {
         </div>
       </header>
 
-      <section className="mx-auto flex w-full max-w-[74rem] justify-center" aria-labelledby="card-showcase-title">
+      <section className="mx-auto flex w-full max-w-[74rem] flex-wrap justify-center gap-10 md:gap-14" aria-labelledby="card-showcase-title">
         <h2 id="card-showcase-title" className="sr-only">
-          Power card component
+          Card components
         </h2>
+        <div className="grid justify-items-center gap-5">
+          <GameCard card={sampleNumberCard} size="preview" />
+          <p className="m-0 text-xs font-extrabold tracking-[0.1em] text-slate-400 uppercase">Number card</p>
+        </div>
         <div className="grid justify-items-center gap-5">
           <GameCard card={samplePowerCard} size="preview" />
           <p className="m-0 text-xs font-extrabold tracking-[0.1em] text-slate-400 uppercase">Power card</p>

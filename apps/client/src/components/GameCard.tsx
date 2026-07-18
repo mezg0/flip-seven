@@ -64,7 +64,7 @@ export function GameCard({
       ) : (
         <>
           {card.kind === "number" ? (
-            <>
+            <div className="game-card__number-frame">
               <img
                 className="game-card__artwork"
                 src={assetUrl(card.artwork)}
@@ -72,14 +72,20 @@ export function GameCard({
                 draggable={false}
               />
               <span className="game-card__series" aria-hidden="true">Number card</span>
-              <span className="game-card__value" aria-hidden="true">
+              <span
+                className="game-card__value"
+                data-text-size={card.typography?.valueSize}
+                aria-hidden="true"
+              >
                 {card.value}
               </span>
               <div className="game-card__identity">
-                <span className="game-card__name">{card.figureName}</span>
+                <span className="game-card__name" data-text-size={card.typography?.nameSize}>
+                  {card.figureName}
+                </span>
                 <span className="game-card__kind">Demigod</span>
               </div>
-            </>
+            </div>
           ) : (
             <div className="game-card__power-frame">
               <div className="game-card__power-header">

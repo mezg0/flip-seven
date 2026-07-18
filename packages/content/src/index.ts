@@ -22,7 +22,13 @@ export interface NumberCardDefinition {
   readonly kind: "number"
   readonly value: NumberValue
   readonly figureName: string
+  readonly typography?: NumberCardTypography
   readonly artwork: AssetKey
+}
+
+export interface NumberCardTypography {
+  readonly valueSize?: CardTextSize
+  readonly nameSize?: CardTextSize
 }
 
 export interface PowerCardDefinition {
