@@ -1,0 +1,25 @@
+{
+  "name": "@flip-seven/client",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@flip-seven/content": "workspace:*",
+    "@flip-seven/protocol": "workspace:*",
+    "react": "latest",
+    "react-dom": "latest",
+    "socket.io-client": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
+    "typescript": "catalog:",
+    "vite": "latest"
+  }
+}
