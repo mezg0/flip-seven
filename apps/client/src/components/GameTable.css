@@ -44,6 +44,22 @@
 .table-layout__deck strong { color: oklch(0.94 0.025 82); font-family: Cinzel, Georgia, serif; font-size: 1.25rem; }
 .table-layout__deck .game-card-shell { --card-width: clamp(3.25rem, 4.5vw, 4rem); }
 
+.deal-animation {
+  position: absolute;
+  z-index: 8;
+  top: 52%;
+  left: 50%;
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
+.deal-animation__card {
+  filter: drop-shadow(0 0.45rem 0.4rem oklch(0.03 0.01 250 / 72%)) drop-shadow(0 0 0.75rem oklch(0.78 0.1 58 / 35%));
+  will-change: transform, opacity;
+}
+
+.deal-animation .game-card-shell { --card-width: clamp(3.75rem, 5.5vw, 4.75rem); }
+
 .table-player {
   position: absolute;
   z-index: 3;
