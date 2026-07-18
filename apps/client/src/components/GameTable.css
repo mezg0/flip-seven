@@ -50,15 +50,12 @@
   top: 52%;
   left: 50%;
   pointer-events: none;
-  translate: -50% -50%;
-}
-
-.deal-animation__card {
   filter: drop-shadow(0 0.45rem 0.4rem oklch(0.03 0.01 250 / 72%)) drop-shadow(0 0 0.75rem oklch(0.78 0.1 58 / 35%));
+  translate: -50% -50%;
   will-change: transform, opacity;
 }
 
-.deal-animation .game-card-shell { --card-width: clamp(3.75rem, 5.5vw, 4.75rem); }
+.deal-animation .game-card-shell { --card-width: clamp(3.25rem, 4.5vw, 4rem); }
 
 .table-player {
   position: absolute;
@@ -102,15 +99,17 @@
 .table-player__identity small { display: block; margin-top: 0.15rem; color: oklch(0.55 0.02 250); font-size: 0.72rem; }
 
 .table-player__hand { display: flex; min-height: 5rem; margin-top: 0.35rem; overflow: visible; align-items: end; justify-content: center; padding: 0.2rem 0.1rem; }
+.table-player__card { position: relative; }
 .table-player__hand > p { margin: auto 0; color: oklch(0.55 0.02 250); font-size: 0.78rem; }
+
+.table-player[data-inspectable="true"] {
+  cursor: pointer;
+}
+
+.table-player[data-inspectable="true"]:focus-visible { outline: 2px solid oklch(0.9 0.08 75); outline-offset: 0.3rem; border-radius: 0.5rem; }
 
 .table-player:not(.table-player--bottom) .game-card-shell {
   --card-width: clamp(3.75rem, 5.5vw, 4.75rem);
-}
-
-.table-layout .game-card[data-kind="number"] .game-card__series,
-.table-layout .game-card[data-kind="number"] .game-card__kind {
-  display: none;
 }
 
 .game-action-panel {
@@ -165,6 +164,117 @@
 .god-choice__order > div { display: grid; grid-template-columns: minmax(0, 1fr) 1.7rem 1.7rem; align-items: center; gap: 0.3rem; color: oklch(0.82 0.02 250); font-size: 0.78rem; }
 .god-choice__order button { padding: 0.3rem; }
 
+.round-summary {
+  position: absolute;
+  z-index: 12;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+  border-radius: inherit;
+  background: oklch(0.035 0.014 250 / 74%);
+}
+
+.round-summary__panel {
+  width: min(40rem, 100%);
+  max-height: calc(100dvh - 7rem);
+  overflow-y: auto;
+  padding: 1.25rem 1.35rem;
+  border: 1px solid oklch(0.54 0.075 55);
+  border-radius: 0.75rem;
+  color: oklch(0.93 0.025 82);
+  background: oklch(0.095 0.022 250 / 96%);
+}
+
+.round-summary__header,
+.round-summary__identity,
+.round-summary__total,
+.round-summary__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.round-summary__header { padding-bottom: 0.8rem; border-bottom: 1px solid oklch(0.31 0.03 250); }
+.round-summary__header p { margin: 0 0 0.15rem; color: oklch(0.74 0.105 58); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+.round-summary__header h2 { margin: 0; font-family: Cinzel, Georgia, serif; font-size: 1.35rem; }
+.round-summary__header > span { color: oklch(0.65 0.025 250); font-size: 0.78rem; font-weight: 700; }
+
+.round-summary__player { padding-top: 1rem; }
+.round-summary__identity h3 { margin: 0; color: white; font-size: 1.1rem; }
+.round-summary__identity p { margin: 0.15rem 0 0; color: oklch(0.67 0.025 250); font-size: 0.78rem; }
+.round-summary__award { color: oklch(0.84 0.14 82); font-family: Cinzel, Georgia, serif; font-size: 2rem; line-height: 1; }
+.round-summary__award--bust { color: oklch(0.72 0.14 25); }
+
+.round-summary__hand {
+  display: flex;
+  min-height: 7rem;
+  align-items: end;
+  justify-content: center;
+  margin: 0.8rem 0;
+  padding: 0.45rem 1rem;
+  overflow-x: auto;
+}
+
+.round-summary__hand > div { flex: none; }
+.round-summary__hand > div + div { margin-left: -1.25rem; }
+.round-summary__hand .game-card-shell { --card-width: clamp(4rem, 8vw, 5.25rem); }
+.round-summary__hand > p { margin: auto; color: oklch(0.62 0.025 250); font-size: 0.82rem; }
+.round-summary__hand[role="button"] { cursor: pointer; }
+.round-summary__hand[role="button"]:focus-visible { outline: 2px solid oklch(0.9 0.08 75); outline-offset: 0.2rem; border-radius: 0.45rem; }
+
+.round-summary__calculation { display: grid; gap: 0.2rem; }
+.round-summary__calculation > div { display: flex; justify-content: space-between; gap: 2rem; padding: 0.28rem 0.4rem; color: oklch(0.69 0.025 250); font-size: 0.82rem; }
+.round-summary__calculation > div:last-child { margin-top: 0.25rem; padding-top: 0.5rem; border-top: 1px solid oklch(0.29 0.03 250); color: oklch(0.9 0.025 82); font-weight: 800; }
+.round-summary__calculation strong { color: oklch(0.93 0.035 82); font-variant-numeric: tabular-nums; }
+
+.round-summary__total { margin-top: 0.75rem; padding: 0.75rem 0.4rem 0; border-top: 1px solid oklch(0.31 0.03 250); }
+.round-summary__total > span { color: oklch(0.72 0.025 250); font-size: 0.82rem; font-weight: 700; }
+.round-summary__total p { display: flex; align-items: baseline; gap: 0.45rem; margin: 0; font-variant-numeric: tabular-nums; }
+.round-summary__total small { color: oklch(0.68 0.025 250); font-size: 0.95rem; }
+.round-summary__total b { color: oklch(0.48 0.025 250); font-size: 0.75rem; }
+.round-summary__total strong { color: oklch(0.84 0.14 82); font-size: 1.2rem; }
+.round-summary__total em { color: white; font-family: Cinzel, Georgia, serif; font-size: 1.6rem; font-style: normal; font-weight: 800; }
+
+.round-summary__footer { min-height: 2.75rem; margin-top: 1rem; }
+.round-summary__footer > p { margin: 0; color: oklch(0.68 0.025 250); font-size: 0.8rem; }
+.round-summary__footer > p[role="alert"] { color: oklch(0.82 0.11 25); }
+.round-summary__footer button { margin-left: auto; padding: 0.65rem 1rem; border: 0; border-radius: 0.5rem; color: oklch(0.1 0.02 250); background: oklch(0.8 0.13 65); font-weight: 800; transition: background 160ms ease, transform 100ms ease; }
+.round-summary__footer button:hover { background: oklch(0.86 0.13 70); }
+.round-summary__footer button:active { transform: scale(0.97); }
+.round-summary__footer button:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+
+.card-inspection {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow-y: auto;
+  padding: 1.25rem;
+  color: oklch(0.94 0.025 82);
+  background:
+    radial-gradient(circle at center, oklch(0.24 0.065 245 / 38%), transparent 64%),
+    oklch(0.025 0.012 250 / 78%);
+}
+
+.card-inspection__content {
+  position: relative;
+  display: grid;
+  width: min(76rem, 100%);
+  justify-items: center;
+  gap: 0.75rem;
+}
+
+.card-inspection__close { position: fixed; top: 1.25rem; right: 1.25rem; z-index: 1; display: grid; width: 2.25rem; height: 2.25rem; place-items: center; padding: 0 0 0.15rem; border: 1px solid oklch(0.58 0.04 250); border-radius: 50%; color: oklch(0.92 0.025 82); background: oklch(0.12 0.02 250 / 84%); font-size: 1.4rem; line-height: 1; transition: background 160ms ease, border-color 160ms ease, transform 100ms ease; }
+.card-inspection__close:hover { border-color: oklch(0.82 0.08 70); background: oklch(0.2 0.035 250); }
+.card-inspection__close:active { transform: scale(0.94); }
+.card-inspection__close:focus-visible { outline: 2px solid white; outline-offset: 3px; }
+.card-inspection__cards { display: flex; width: 100%; align-items: flex-start; justify-content: center; gap: clamp(0.65rem, 1.6vw, 1.25rem); flex-wrap: wrap; }
+.card-inspection__cards > div { flex: none; }
+.card-inspection__cards .game-card-shell { --card-width: clamp(8.5rem, 14vw, 11.5rem); }
+
 @media (max-width: 800px) {
   .table-layout { min-height: calc(100dvh - 6rem); }
   .table-player { width: min(15rem, calc(50% - 1.5rem)); }
@@ -185,9 +295,22 @@
   .table-layout__deck { top: 57%; }
   .game-action-panel { top: auto; right: 50%; bottom: 9rem; width: min(20rem, calc(100% - 1rem)); transform: translateX(50%); }
   .game-action-panel--god { right: auto; bottom: auto; width: min(25rem, 100%); transform: none; }
+  .round-summary { padding: 0.5rem; }
+  .round-summary__panel { max-height: calc(100dvh - 5rem); padding: 1rem; }
+  .round-summary__hand { min-height: 5.5rem; margin-block: 0.55rem; padding-inline: 0.4rem; }
+  .round-summary__hand .game-card-shell { --card-width: 3.7rem; }
+  .round-summary__hand > div + div { margin-left: -1.35rem; }
+  .card-inspection { padding: 0.75rem; }
+  .card-inspection__content { gap: 0.55rem; }
+  .card-inspection__cards { gap: 0.55rem; }
+  .card-inspection__cards .game-card-shell { --card-width: clamp(7.5rem, 38vw, 9.5rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .table-player { transition: none; }
   .god-choice-overlay { backdrop-filter: none; }
+  .round-summary { backdrop-filter: none; }
+  .round-summary__footer button { transition: none; }
+  .card-inspection__close { transition: none; }
+  .card-inspection { backdrop-filter: none; }
 }

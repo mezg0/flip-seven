@@ -131,6 +131,42 @@ describe("base flow with God cards", () => {
     expect(toPublicGameState(pending, "p0").pendingChoice?.physicalCardIds).toEqual(["one", "two", "three"])
     expect(toPublicGameState(pending, "p1").pendingChoice?.physicalCardIds).toEqual([])
   })
+
+  it("pauses on the scored round until the host advances it", () => {
+    const state = gameForTurn([numberCard("unused", 1)])
+    state.config.targetScore = 1
+    state.players[0]?.numberCards.push(numberInstance("five", 5))
+    state.players[0]?.modifierCards.push(modifierInstance("plus-four", "add", 4))
+    state.players[1]!.roundStatus = "stayed"
+    state.players[2]!.roundStatus = "busted"
+
+    const scored = applyCommand(state, {
+      type: "STAY",
+      actorId: "p0",
+      expectedRevision: state.revision,
+    })
+
+    expect(scored.nextState.phase).toBe("roundScoring")
+    expect(scored.nextState.players[0]?.totalScore).toBe(9)
+    expect(scored.nextState.players[0]?.numberCards).toHaveLength(1)
+    expect(scored.nextState.winnerId).toBe("p0")
+    expect(scored.events).toContainEqual({ type: "ROUND_SCORE_AWARDED", playerId: "p0", score: 9 })
+    expect(() => applyCommand(scored.nextState, {
+      type: "ADVANCE_ROUND",
+      actorId: "p1",
+      expectedRevision: scored.nextState.revision,
+    })).toThrowError(expect.objectContaining({ code: "COMMAND_NOT_ALLOWED" }))
+
+    const advanced = applyCommand(scored.nextState, {
+      type: "ADVANCE_ROUND",
+      actorId: "p0",
+      expectedRevision: scored.nextState.revision,
+    })
+
+    expect(advanced.nextState.phase).toBe("gameOver")
+    expect(advanced.nextState.players[0]?.numberCards).toHaveLength(0)
+    expect(advanced.events).toContainEqual({ type: "GAME_WON", playerId: "p0", totalScore: 9 })
+  })
 })
 
 describe("Zeus", () => {

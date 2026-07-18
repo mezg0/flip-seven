@@ -245,6 +245,7 @@ export type GameCommand =
   | { readonly type: "START_GAME"; readonly actorId: string }
   | { readonly type: "HIT"; readonly actorId: string; readonly expectedRevision: number }
   | { readonly type: "STAY"; readonly actorId: string; readonly expectedRevision: number }
+  | { readonly type: "ADVANCE_ROUND"; readonly actorId: string; readonly expectedRevision: number }
   | {
     readonly type: "SUBMIT_CHOICE"
     readonly actorId: string

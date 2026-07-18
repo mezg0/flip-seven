@@ -17,7 +17,7 @@ function getAccessibleName(card: CardDefinition, face: "front" | "back") {
   }
 
   if (card.kind === "number") {
-    return `${card.value}, ${card.figureName}, number card`
+    return `${card.value}, ${card.figureName}`
   }
 
   return `${card.deityName}, ${card.effectName}. ${card.description}`
@@ -72,7 +72,6 @@ export function GameCard({
                 alt=""
                 draggable={false}
               />
-              <span className="game-card__series" aria-hidden="true">Number card</span>
               <span
                 className="game-card__value"
                 data-text-size={card.typography?.valueSize}
@@ -84,7 +83,6 @@ export function GameCard({
                 <span className="game-card__name" data-text-size={card.typography?.nameSize}>
                   {card.figureName}
                 </span>
-                <span className="game-card__kind">Demigod</span>
               </div>
             </div>
           ) : (
