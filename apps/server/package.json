@@ -1,5 +1,5 @@
 {
-  "name": "@flip-seven/server",
+  "name": "@favour-of-olympus/server",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,8 +10,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@flip-seven/game": "workspace:*",
-    "@flip-seven/protocol": "workspace:*",
+    "@favour-of-olympus/game": "workspace:*",
+    "@favour-of-olympus/protocol": "workspace:*",
     "effect": "catalog:",
     "socket.io": "latest"
   },

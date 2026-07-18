@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { io } from "socket.io-client"
-import type { AssetKey, CardDefinition, PowerCardDefinition } from "@flip-seven/content"
+import type { AssetKey, CardDefinition, PowerCardDefinition } from "@favour-of-olympus/content"
 import type {
   GameClaimResponse,
   GameCreateResponse,
@@ -9,7 +9,7 @@ import type {
   GameResponse,
   GameSnapshot,
   ServerStatus,
-} from "@flip-seven/protocol"
+} from "@favour-of-olympus/protocol"
 import { GameCard } from "./components/GameCard.tsx"
 import { GodChoicePanel } from "./components/GodChoicePanel.tsx"
 import "./components/GameTable.css"
@@ -101,12 +101,12 @@ export function App() {
 
   function remember(gameId: string, playerId: string, accessToken: string) {
     const nextSession = { gameId, playerId, accessToken }
-    sessionStorage.setItem("flip-seven-session", JSON.stringify(nextSession))
+    sessionStorage.setItem("favour-of-olympus-session", JSON.stringify(nextSession))
     setSession(nextSession)
   }
 
   function clearGame() {
-    sessionStorage.removeItem("flip-seven-session")
+    sessionStorage.removeItem("favour-of-olympus-session")
     setSession(null)
     setSnapshot(null)
     setError(null)
@@ -334,7 +334,7 @@ function Lobby({ snapshot, roomCode, isHost, canStart, error, onStart, onEnd }: 
   const emptySeats = Array.from({ length: maximumPlayers - players.length })
   const hasStarted = snapshot.state.phase !== "lobby"
   return <main className="min-h-screen bg-night px-5 py-7 text-parchment md:px-10 md:py-10">
-    <header className="mx-auto flex w-full max-w-4xl items-center justify-between gap-5"><div className="font-display text-2xl font-bold">Flip Seven</div><span className="rounded-full bg-bronze/15 px-3 py-1 text-sm font-bold text-bronze">{players.length} / {maximumPlayers} players</span></header>
+    <header className="mx-auto flex w-full max-w-4xl items-center justify-between gap-5"><div className="font-display text-2xl font-bold">Favour of Olympus</div><span className="rounded-full bg-bronze/15 px-3 py-1 text-sm font-bold text-bronze">{players.length} / {maximumPlayers} players</span></header>
     <section className="mx-auto mt-16 w-full max-w-4xl" aria-labelledby="room-title">
       <p className="text-sm font-bold text-bronze">Room code</p>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-5"><div><h1 id="room-title" className="font-display text-5xl font-bold tracking-[-0.025em]">{roomCode}</h1><p className="mt-3 text-slate-300">Share this code with your friends. The table seats up to four.</p></div>{isHost && <div className="flex gap-3">{!hasStarted && <button type="button" onClick={onStart} disabled={!canStart} className="rounded-xl bg-bronze px-5 py-3 font-bold text-night transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-bronze focus:ring-offset-2 focus:ring-offset-night disabled:cursor-not-allowed disabled:opacity-45">{canStart ? "Start game" : `Need ${3 - players.length} more player${players.length === 2 ? "" : "s"}`}</button>}<button type="button" onClick={onEnd} className="rounded-xl border border-red-400/60 px-4 py-3 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button></div>}</div>
@@ -357,7 +357,7 @@ function GameTable({ snapshot, playerId, isHost, roundGods, error, onCommand, on
   const showTurnChoice = isYourTurn || (error !== null && pendingChoice === null)
 
   return <main className="min-h-screen bg-night px-3 py-4 text-parchment md:px-6 md:py-6">
-    <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4"><div><p className="text-xs font-bold tracking-[0.08em] text-bronze uppercase">Round {state.roundNumber}</p><h1 className="font-display text-2xl font-bold">Flip Seven</h1></div><div className="flex items-center gap-4"><p className="hidden text-sm text-slate-400 sm:block">First to 200 wins</p>{isHost && <button type="button" onClick={onEnd} className="rounded-lg border border-red-400/60 px-3 py-2 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button>}</div></header>
+    <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4"><div><p className="text-xs font-bold tracking-[0.08em] text-bronze uppercase">Round {state.roundNumber}</p><h1 className="font-display text-2xl font-bold">Favour of Olympus</h1></div><div className="flex items-center gap-4"><p className="hidden text-sm text-slate-400 sm:block">First to 200 wins</p>{isHost && <button type="button" onClick={onEnd} className="rounded-lg border border-red-400/60 px-3 py-2 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button>}</div></header>
     <section className="mx-auto mt-7 w-full max-w-7xl" aria-label="Game table">
       <div className="table-layout" data-players={state.players.length}>
         <Leaderboard players={state.players} roundGods={roundGods} />
@@ -425,4 +425,4 @@ function godCardDefinition(god: string): PowerCardDefinition {
 function validUsername(value: string): boolean { return /^[a-zA-Z0-9 _-]{2,64}$/.test(value.trim()) }
 function toPlayerId(value: string): string { return value.trim().toLowerCase().replace(/\s+/g, "-") }
 function makeRoomCode(): string { return `OLY-${crypto.randomUUID().slice(0, 6).toUpperCase()}` }
-function readSession(): StoredSession | null { try { const value = sessionStorage.getItem("flip-seven-session"); return value === null ? null : JSON.parse(value) as StoredSession } catch { return null } }
+function readSession(): StoredSession | null { try { const value = sessionStorage.getItem("favour-of-olympus-session"); return value === null ? null : JSON.parse(value) as StoredSession } catch { return null } }

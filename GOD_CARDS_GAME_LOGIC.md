@@ -22,7 +22,7 @@ Definitions:
 - **Active player**: a player who has not stayed or busted this round.
 - **Physical card**: one of the 97 cards that moves among draw pile, resolving zone, table, and discard pile.
 - **Effect token**: a generated round-only effect created when a power is copied or shared without moving another physical card.
-- **Atomic effect**: an operation whose duplicate checks and Flip 7 checks must finish for every affected player before the round can end.
+- **Atomic effect**: an operation whose duplicate checks and Favour of Olympus checks must finish for every affected player before the round can end.
 
 Unlike the original Action Cards, every God Card revealed during Ares resolves fully. It is not merely counted and deferred.
 
@@ -136,12 +136,12 @@ interface GodVariantState {
   resolutionStack: Array<GodResolutionFrame | AresFrame>;
   pendingChoice: PendingChoice | null;
   godResolutionHistory: GodResolutionRecord[];
-  flipSevenPlayerIds: string[];
+  favourOfOlympusPlayerIds: string[];
   roundEndRequested: boolean;
 }
 ```
 
-`flipSevenPlayerIds` is an array, not a single ID. Aphrodite can give the same Number Card to two players simultaneously, allowing both to achieve Flip 7 in one atomic effect.
+`favourOfOlympusPlayerIds` is an array, not a single ID. Aphrodite can give the same Number Card to two players simultaneously, allowing both to achieve Favour of Olympus in one atomic effect.
 
 ## 4. Resolution engine
 
@@ -180,12 +180,12 @@ God resolution rules:
 3. Apply the effect.
 4. Resolve all resulting duplicate checks.
 5. Recalculate Demeter attachments.
-6. Detect Flip 7 for all affected active players.
+6. Detect Favour of Olympus for all affected active players.
 7. Finish or discard the physical God Card as specified.
 8. Pop the frame and append the God to resolution history.
 9. If `roundEndRequested`, abandon future draws and unwind the remaining frames without starting new effects.
 
-Round termination is delayed until the current atomic effect finishes. For example, Aphrodite must resolve duplicate outcomes for both targets before a simultaneous Flip 7 ends the round.
+Round termination is delayed until the current atomic effect finishes. For example, Aphrodite must resolve duplicate outcomes for both targets before a simultaneous Favour of Olympus ends the round.
 
 ### Choice system
 
@@ -211,7 +211,7 @@ type ChoiceCommand = {
 
 The server must validate IDs against `pendingChoice`. Never accept arbitrary player IDs, card IDs, values, or deck ordering from the client.
 
-## 5. Shared duplicate and Flip 7 handling
+## 5. Shared duplicate and Favour of Olympus handling
 
 All ways of receiving a Number Card—normal hit, Hades, Hermes, Ares, and Aphrodite—must use one duplicate resolver.
 
@@ -252,7 +252,7 @@ function finishAtomicNumberChanges(affectedPlayerIds: string[]) {
     isActive(id) && countUniqueNumbers(getPlayer(id)) >= 7
   );
 
-  for (const id of achievers) addFlipSevenAchiever(id);
+  for (const id of achievers) addFavourOfOlympusAchiever(id);
   if (achievers.length > 0) state.roundEndRequested = true;
 }
 ```
@@ -324,7 +324,7 @@ Rules and edge cases:
 - If the forced player busts from the drawn number or from a nested God effect, Ares stops immediately.
 - If Dyonisus makes the forced player stay, Ares stops because that player is no longer active.
 - If Dyonisus targets somebody else, the forced player's Ares sequence continues.
-- If any atomic effect achieves Flip 7, Ares stops and the round ends after the current resolution stack safely unwinds.
+- If any atomic effect achieves Favour of Olympus, Ares stops and the round ends after the current resolution stack safely unwinds.
 - If Ares reveals another Ares, resolve the nested Ares fully, then resume the parent Ares only if its original target remains active and the round has not ended.
 - A Zeus-protected duplicate consumes the forced draw but does not stop Ares; continue with the remaining draws.
 - If the draw pile empties between forced cards, reshuffle eligible discard cards normally. Never reshuffle cards in tableaux or the resolving stack.
@@ -377,7 +377,7 @@ Rules and edge cases:
 - If the draw pile has fewer than three but the discard pile is available, preserve the current draw-pile cards as the first cards, shuffle the discard pile to supply the remainder, then allow all peeked cards to be reordered together.
 - Cards in play or currently resolving are never included.
 - On timeout or disconnection, return the cards in their original order.
-- Reordering the deck does not itself resolve duplicates or Flip 7.
+- Reordering the deck does not itself resolve duplicates or Favour of Olympus.
 
 ### Hades — From the Underworld
 
@@ -401,7 +401,7 @@ Rules and edge cases:
 - If there are no discarded Number Cards, Hades resolves with no effect.
 - Hades cannot select a Number Card in front of a player, in the draw pile, or in the resolving zone.
 - The target cannot refuse the card.
-- Duplicate, Zeus, Demeter, bust, and Flip 7 logic are identical to a normal Number draw.
+- Duplicate, Zeus, Demeter, bust, and Favour of Olympus logic are identical to a normal Number draw.
 - If Zeus rejects the resurrected duplicate, that physical Number Card returns to discard.
 - If the target busts, the selected card remains visible in that player's tableau until round cleanup.
 
@@ -442,7 +442,7 @@ Rules and edge cases:
 - Each affected player resolves their own Zeus independently.
 - When Zeus prevents a duplicate, the incoming exchanged card is discarded/destroyed. The protected player does not recover the card they gave away.
 - Recalculate Demeter for both players after all duplicate outcomes.
-- Check Flip 7 only after both players' duplicate outcomes finish.
+- Check Favour of Olympus only after both players' duplicate outcomes finish.
 - A generated Aphrodite number can be exchanged. It remains generated and is destroyed rather than added to the physical discard pile if later discarded.
 
 ### Artemis — The Perfect Shot
@@ -466,7 +466,7 @@ Rules and edge cases:
 - A physical Number Card enters discard immediately and can be selected by a later Hades.
 - An Aphrodite-generated number is destroyed and never enters the physical discard pile.
 - Removing a card lowers score and unique-number count.
-- A round normally ends immediately once Flip 7 is confirmed, so Artemis cannot undo an already completed Flip 7. It can remove a sixth-or-lower card before that point.
+- A round normally ends immediately once Favour of Olympus is confirmed, so Artemis cannot undo an already completed Favour of Olympus. It can remove a sixth-or-lower card before that point.
 - Demeter moves to the player's new lowest card, or becomes dormant if the player has no numbers.
 
 ### Aphrodite — Irresistible Bond
@@ -506,9 +506,9 @@ Rules and edge cases:
 - The two targets must be distinct and active when selected. The controller may be one of them.
 - If fewer than two active players exist, Aphrodite resolves with no effect and does not reveal a card.
 - The revealed physical card always ends in discard after its effect is applied.
-- For a Number, create one temporary number instance for each target. Both count for score, duplicates, Demeter, and Flip 7 during the round.
-- Resolve both players' duplicate/Zeus outcomes before checking Flip 7.
-- Both targets can bust, both can survive, or both can achieve Flip 7 simultaneously.
+- For a Number, create one temporary number instance for each target. Both count for score, duplicates, Demeter, and Favour of Olympus during the round.
+- Resolve both players' duplicate/Zeus outcomes before checking Favour of Olympus.
+- Both targets can bust, both can survive, or both can achieve Favour of Olympus simultaneously.
 - For a Modifier, create one temporary modifier instance for each player. An `x2` remains an `x2`; multiple `x2` effects are idempotent rather than compounding to `x4`.
 - For a God, resolve that God exactly once. Aphrodite's controller controls the revealed God and makes its choices.
 - Persistent revealed Gods such as Zeus, Demeter, or Nike create effect tokens; their physical card still goes to discard.
@@ -577,11 +577,11 @@ Rules and edge cases:
 - If the blessed player has no numbers, Demeter is dormant and scores zero. It reattaches if that player later receives a number while still active.
 - Multiple Demeter effects can exist through Prometheus/Aphrodite. Each adds the current lowest value once; two blessings make that one card contribute three times in total, not four times.
 - Demeter's bonus is part of the effective number total and is doubled by `x2`.
-- Demeter never adds a unique number and never counts toward Flip 7.
+- Demeter never adds a unique number and never counts toward Favour of Olympus.
 
 ### Nike — Glory of Victory
 
-Effect: give the controller a persistent Nike effect. Each Nike effect awards `+10` if that player achieves Flip 7 this round.
+Effect: give the controller a persistent Nike effect. Each Nike effect awards `+10` if that player achieves Favour of Olympus this round.
 
 ```ts
 function resolveNike(ctx: GodContext) {
@@ -594,15 +594,15 @@ function resolveNike(ctx: GodContext) {
 }
 
 function nikeBonus(playerId: string): number {
-  if (!hasFlipSeven(playerId)) return 0;
+  if (!hasFavourOfOlympus(playerId)) return 0;
   return getPlayer(playerId).godEffects.filter(effect => effect.kind === "nike").length * 10;
 }
 ```
 
 Rules and edge cases:
 
-- Nike is not a Number or Modifier and does not count toward Flip 7.
-- Nike's `+10` is added after the number total, `x2`, additive modifiers, and normal `+15` Flip 7 bonus. It is not doubled.
+- Nike is not a Number or Modifier and does not count toward Favour of Olympus.
+- Nike's `+10` is added after the number total, `x2`, additive modifiers, and normal `+15` Favour of Olympus bonus. It is not doubled.
 - Multiple Nike effects created by copied/revealed powers each award `+10`.
 - If Nike never triggers, its physical card/effect is removed during round cleanup.
 - A busted player cannot trigger Nike.
@@ -653,8 +653,8 @@ For a non-busted player:
 2. Add the Demeter bonus: current lowest number value once per Demeter blessing.
 3. Apply `x2` to that effective number total.
 4. Add all `+N` Modifier instances.
-5. Add the normal `+15` if the player achieved Flip 7.
-6. Add `+10` per Nike effect if the player achieved Flip 7.
+5. Add the normal `+15` if the player achieved Favour of Olympus.
+6. Add `+10` per Nike effect if the player achieved Favour of Olympus.
 
 ```ts
 function calculateRoundScore(player: PlayerState): number {
@@ -671,7 +671,7 @@ function calculateRoundScore(player: PlayerState): number {
 
   return effectiveNumbers * (hasX2 ? 2 : 1)
     + additive
-    + (hasFlipSeven(player.id) ? 15 : 0)
+    + (hasFavourOfOlympus(player.id) ? 15 : 0)
     + nikeBonus(player.id);
 }
 ```
@@ -683,19 +683,19 @@ Example: numbers `2, 5, 8`, Demeter, `x2`, and `+4` score `((2 + 5 + 8 + 2) × 2
 ```text
 player chooses HIT
   -> reveal one physical card
-  -> Number: receive it; resolve Zeus/duplicate; check Flip 7
+  -> Number: receive it; resolve Zeus/duplicate; check Favour of Olympus
   -> Modifier: receive it
   -> God: controller resolves the God completely
        -> request and validate choices
        -> apply atomic changes
        -> fully resolve nested Gods and forced draws
        -> record completed God in round history
-  -> if Flip 7 was requested, end the round
+  -> if Favour of Olympus was requested, end the round
   -> else if no active players remain, end the round
   -> else advance to next active player
 ```
 
-Initial deal uses the same resolver. If a God appears, pause dealing until its entire resolution stack completes. If it causes a player to stay or bust before that player's scheduled initial card, skip that inactive player. If it causes Flip 7, stop the initial deal and score immediately.
+Initial deal uses the same resolver. If a God appears, pause dealing until its entire resolution stack completes. If it causes a player to stay or bust before that player's scheduled initial card, skip that inactive player. If it causes Favour of Olympus, stop the initial deal and score immediately.
 
 ## 9. Physical card lifecycle
 
@@ -716,9 +716,9 @@ These rules prevent client timing from changing outcomes:
 1. Commands and choices are serialized by server revision.
 2. Nested God effects resolve depth-first: finish the newly revealed God before resuming its parent effect.
 3. Ares draws resolve one at a time, each including its complete nested resolution.
-4. Multi-player number changes apply incoming cards in stable target-seat order for Zeus consumption, then check Flip 7 for all affected players together.
-5. Hermes removes both outgoing cards, applies both incoming cards, resolves both duplicates, recalculates Demeter, then checks Flip 7.
-6. Aphrodite resolves both target outcomes before checking Flip 7.
+4. Multi-player number changes apply incoming cards in stable target-seat order for Zeus consumption, then check Favour of Olympus for all affected players together.
+5. Hermes removes both outgoing cards, applies both incoming cards, resolves both duplicates, recalculates Demeter, then checks Favour of Olympus.
+6. Aphrodite resolves both target outcomes before checking Favour of Olympus.
 7. `godResolutionHistory` is appended on completion, not reveal. Nested Gods therefore complete before their enclosing God.
 8. Round-end checks run after the current atomic effect, never halfway through it.
 
@@ -745,7 +745,7 @@ Every no-effect God still counts as a completed God resolution for Prometheus hi
 
 - Deck contains 97 unique physical card IDs: 79 numbers, 6 modifiers, and 12 Gods.
 - Generated Aphrodite and fallback instances never enter the physical deck.
-- `flipSevenPlayerIds` supports zero, one, or multiple achievers.
+- `favourOfOlympusPlayerIds` supports zero, one, or multiple achievers.
 
 ### Zeus
 
@@ -757,7 +757,7 @@ Every no-effect God still counts as a completed God resolution for Prometheus hi
 
 ### Ares
 
-- Exactly three cards resolve when the target remains active and nobody gets Flip 7.
+- Exactly three cards resolve when the target remains active and nobody gets Favour of Olympus.
 - Modifier and God Cards each consume one forced draw.
 - A God revealed by Ares resolves fully before the next forced draw.
 - A Zeus-protected duplicate does not stop remaining forced draws.
@@ -765,7 +765,7 @@ Every no-effect God still counts as a completed God resolution for Prometheus hi
 - A nested God causing the forced target to bust or stay stops Ares.
 - A nested God affecting someone else allows Ares to continue.
 - Nested Ares resolves depth-first, then parent Ares resumes correctly.
-- Flip 7 during any nested resolution stops all remaining forced draws.
+- Favour of Olympus during any nested resolution stops all remaining forced draws.
 
 ### Dyonisus and Athena
 
@@ -778,7 +778,7 @@ Every no-effect God still counts as a completed God resolution for Prometheus hi
 ### Hades, Hermes, and Artemis
 
 - Hades can select only physical Number Cards currently in discard.
-- Hades duplicate follows Zeus/bust rules and can create Flip 7.
+- Hades duplicate follows Zeus/bust rules and can create Favour of Olympus.
 - Hermes requires two distinct active players with numbers.
 - Hermes exchange is atomic and can bust neither, one, or both players.
 - Zeus discards the incoming exchanged card without restoring the outgoing card.
@@ -790,8 +790,8 @@ Every no-effect God still counts as a completed God resolution for Prometheus hi
 
 - Requires two distinct active targets and reveals nothing if fewer than two exist.
 - Number creates two temporary instances and discards the physical card.
-- Both duplicates resolve before any Flip 7 check.
-- Both players can achieve Flip 7 and both receive normal/Nike bonuses.
+- Both duplicates resolve before any Favour of Olympus check.
+- Both players can achieve Favour of Olympus and both receive normal/Nike bonuses.
 - Modifier creates two effects; `x2` does not compound beyond x2 for one player.
 - Revealed God resolves once under Aphrodite controller.
 - Revealed persistent God uses a token while its physical card is discarded.
@@ -806,7 +806,7 @@ Every no-effect God still counts as a completed God resolution for Prometheus hi
 - Demeter scores zero with no numbers and reattaches after a later number.
 - Multiple Demeters add one lowest-card value each.
 - `x2` doubles the Demeter-adjusted number total.
-- Nike gives +10 only on Flip 7 and is not doubled.
+- Nike gives +10 only on Favour of Olympus and is not doubled.
 - Multiple Nike effects stack additively.
 
 ### Prometheus and history
@@ -822,7 +822,7 @@ Every no-effect God still counts as a completed God resolution for Prometheus hi
 ### Round-end and cleanup
 
 - Atomic multi-player effects finish before round termination.
-- Once Flip 7 is requested, no further Ares draw or initial-deal card starts.
-- All simultaneous Flip 7 achievers receive `+15` and their own Nike bonuses.
+- Once Favour of Olympus is requested, no further Ares draw or initial-deal card starts.
+- All simultaneous Favour of Olympus achievers receive `+15` and their own Nike bonuses.
 - No active players ends the round only after the current God effect finishes.
 - Retained physical Gods enter discard at cleanup; generated tokens/instances are destroyed.

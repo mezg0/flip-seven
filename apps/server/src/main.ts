@@ -1,5 +1,5 @@
 import { createServer } from "node:http"
-import { GameRuleError } from "@flip-seven/game"
+import { GameRuleError } from "@favour-of-olympus/game"
 import {
   GameCommandRequest,
   GameClaimRequest,
@@ -13,7 +13,7 @@ import {
   type GameProtocolError,
   type GameResponse,
   type ServerToClientEvents,
-} from "@flip-seven/protocol"
+} from "@favour-of-olympus/protocol"
 import { Effect, Schema } from "effect"
 import { Server } from "socket.io"
 import {
@@ -144,7 +144,7 @@ const program = Effect.gen(function*() {
       Effect.async<void, Error>((resume) => {
         httpServer.once("error", (error) => resume(Effect.fail(error)))
         httpServer.listen(port, () => {
-          console.log(`Flip Seven server listening on http://localhost:${port}`)
+          console.log(`Favour of Olympus server listening on http://localhost:${port}`)
         })
       }),
     ({ httpServer, io }) =>
