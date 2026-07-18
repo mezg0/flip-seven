@@ -1,5 +1,5 @@
 {
-  "name": "@flip-seven/protocol",
+  "name": "@favour-of-olympus/protocol",
   "private": true,
   "type": "module",
   "exports": {
@@ -9,7 +9,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@flip-seven/game": "workspace:*",
+    "@favour-of-olympus/game": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

@@ -7,7 +7,7 @@ export function demeterBonus(player: PlayerState): number {
   return lowest * blessings
 }
 
-export function calculateRoundScore(player: PlayerState, achievedFlipSeven: boolean): number {
+export function calculateRoundScore(player: PlayerState, achievedFavourOfOlympus: boolean): number {
   if (player.roundStatus === "busted") return 0
 
   const baseNumbers = player.numberCards.reduce((sum, card) => sum + card.value, 0)
@@ -17,13 +17,13 @@ export function calculateRoundScore(player: PlayerState, achievedFlipSeven: bool
     (sum, card) => sum + (card.operation === "add" ? card.value : 0),
     0,
   )
-  const nikeBonus = achievedFlipSeven
+  const nikeBonus = achievedFavourOfOlympus
     ? player.godEffects.filter((effect) => effect.kind === "nike").length * 10
     : 0
 
   return effectiveNumbers * (hasMultiplier ? 2 : 1)
     + additiveTotal
-    + (achievedFlipSeven ? 15 : 0)
+    + (achievedFavourOfOlympus ? 15 : 0)
     + nikeBonus
 }
 

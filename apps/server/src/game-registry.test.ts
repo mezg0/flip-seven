@@ -1,4 +1,4 @@
-import { GameCreateRequest } from "@flip-seven/protocol"
+import { GameCreateRequest } from "@favour-of-olympus/protocol"
 import { Effect, Schema } from "effect"
 import { describe, expect, it } from "vitest"
 import { GameRegistry, RegistryError } from "./game-registry.js"

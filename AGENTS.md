@@ -1,8 +1,8 @@
-# Flip Seven repository guide
+# Favour of Olympus repository guide
 
 ## Project structure
 
-This is a pnpm monorepo for an online multiplayer Flip Seven game.
+This is a pnpm monorepo for an online multiplayer Favour of Olympus game.
 
 - `apps/client` — React and Vite browser client
 - `apps/server` — Effect and Socket.IO backend

@@ -1,5 +1,5 @@
 {
-  "name": "@flip-seven/client",
+  "name": "@favour-of-olympus/client",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,8 +9,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@flip-seven/content": "workspace:*",
-    "@flip-seven/protocol": "workspace:*",
+    "@favour-of-olympus/content": "workspace:*",
+    "@favour-of-olympus/protocol": "workspace:*",
     "motion": "^12.42.2",
     "react": "latest",
     "react-dom": "latest",

@@ -287,7 +287,7 @@ describe("Aphrodite", () => {
     expect(result.discardPile.map((card) => card.id)).toEqual(expect.arrayContaining(["physical-seven", "aphrodite"]))
   })
 
-  it("finishes both targets atomically and records simultaneous Flip 7", () => {
+  it("finishes both targets atomically and records simultaneous Favour of Olympus", () => {
     const state = gameForTurn([
       godCard("aphrodite", "aphrodite"),
       numberCard("physical-seven", 7),
@@ -299,7 +299,7 @@ describe("Aphrodite", () => {
     }
     const result = choose(hit(state).nextState, ["p1", "p2"])
 
-    expect(result.events.filter((event) => event.type === "FLIP_SEVEN_ACHIEVED")).toHaveLength(2)
+    expect(result.events.filter((event) => event.type === "FAVOUR_OF_OLYMPUS_ACHIEVED")).toHaveLength(2)
     expect(result.nextState.winnerId).toBe("p1")
     expect(result.nextState.players[1]?.totalScore).toBe(44)
     expect(result.nextState.players[2]?.totalScore).toBe(43)
@@ -347,7 +347,7 @@ describe("Hephaestus, Demeter, Nike, and Prometheus", () => {
     expect(result.players[1]?.godCardsInFront.map((card) => card.id)).toContain("demeter")
   })
 
-  it("adds Nike after the normal Flip 7 bonus and never doubles it", () => {
+  it("adds Nike after the normal Favour of Olympus bonus and never doubles it", () => {
     const state = gameForTurn([numberCard("seven", 7)])
     state.config.targetScore = 1
     state.players[0]?.numberCards.push(...[1, 2, 3, 4, 5, 6].map((value) => numberInstance(`n${value}`, value)))

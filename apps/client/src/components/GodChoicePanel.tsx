@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react"
-import type { GameSnapshot } from "@flip-seven/protocol"
+import type { GameSnapshot } from "@favour-of-olympus/protocol"
 
 type PendingChoice = Exclude<GameSnapshot["state"]["pendingChoice"], null>
 type Player = GameSnapshot["state"]["players"][number]

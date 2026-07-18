@@ -10,7 +10,7 @@ import type {
   GameResponse,
   GameSnapshot,
   ServerStatus,
-} from "@flip-seven/protocol"
+} from "@favour-of-olympus/protocol"
 import { GameCard } from "./components/GameCard.tsx"
 import { GodChoicePanel } from "./components/GodChoicePanel.tsx"
 import "./components/GameTable.css"
@@ -136,12 +136,12 @@ export function App() {
 
   function remember(gameId: string, playerId: string, accessToken: string) {
     const nextSession = { gameId, playerId, accessToken }
-    sessionStorage.setItem("flip-seven-session", JSON.stringify(nextSession))
+    sessionStorage.setItem("favour-of-olympus-session", JSON.stringify(nextSession))
     setSession(nextSession)
   }
 
   function clearGame() {
-    sessionStorage.removeItem("flip-seven-session")
+    sessionStorage.removeItem("favour-of-olympus-session")
     setSession(null)
     setSnapshot(null)
     setError(null)
@@ -442,7 +442,7 @@ function GameTable({ snapshot, playerId, isHost, roundGods, activeDeal, pendingD
   const pendingRecipientIds = new Set(pendingDeals.map((deal) => deal.recipientId))
 
   return <main className="min-h-screen bg-night px-3 py-4 text-parchment md:px-6 md:py-6">
-    <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4"><div><p className="text-xs font-bold tracking-[0.08em] text-bronze uppercase">Round {state.roundNumber}</p><h1 className="font-display text-2xl font-bold">Flip Seven</h1></div><div className="flex items-center gap-4"><p className="hidden text-sm text-slate-400 sm:block">First to 200 wins</p>{isHost && <button type="button" onClick={onEnd} className="rounded-lg border border-red-400/60 px-3 py-2 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button>}</div></header>
+    <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4"><div><p className="text-xs font-bold tracking-[0.08em] text-bronze uppercase">Round {state.roundNumber}</p><h1 className="font-display text-2xl font-bold">Favour of Olympus</h1></div><div className="flex items-center gap-4"><p className="hidden text-sm text-slate-400 sm:block">First to 200 wins</p>{isHost && <button type="button" onClick={onEnd} className="rounded-lg border border-red-400/60 px-3 py-2 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button>}</div></header>
     <section className="mx-auto mt-7 w-full max-w-7xl" aria-label="Game table">
       <div className="table-layout" data-players={state.players.length}>
         <Leaderboard players={state.players} roundGods={roundGods} />
@@ -545,4 +545,4 @@ function godCardDefinition(god: string): PowerCardDefinition {
 function validUsername(value: string): boolean { return /^[a-zA-Z0-9 _-]{2,64}$/.test(value.trim()) }
 function toPlayerId(value: string): string { return value.trim().toLowerCase().replace(/\s+/g, "-") }
 function makeRoomCode(): string { return `OLY-${crypto.randomUUID().slice(0, 6).toUpperCase()}` }
-function readSession(): StoredSession | null { try { const value = sessionStorage.getItem("flip-seven-session"); return value === null ? null : JSON.parse(value) as StoredSession } catch { return null } }
+function readSession(): StoredSession | null { try { const value = sessionStorage.getItem("favour-of-olympus-session"); return value === null ? null : JSON.parse(value) as StoredSession } catch { return null } }
