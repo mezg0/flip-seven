@@ -305,6 +305,7 @@ export function App() {
   )
 }
 
+
 function TitleScreen({ status, onEnter }: { readonly status: ServerStatus; readonly onEnter: () => void }) {
   return <main className="title-screen text-parchment">
     <div className="title-screen__shade" />
@@ -364,137 +365,66 @@ function ChevronIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
 }
 
-type CardRevealEvent = Extract<GameSnapshot["events"][number], { readonly type: "CARD_REVEALED" }>
-type GodRevealEvent = CardRevealEvent & { readonly card: Extract<CardRevealEvent["card"], { readonly kind: "god" }> }
-
-function isGodRevealEvent(event: GameSnapshot["events"][number]): event is GodRevealEvent {
-  return event.type === "CARD_REVEALED" && event.card.kind === "god"
-}
-
-function GodRevealOverlay({ god, playerName, onDismiss }: { readonly god: string; readonly playerName: string; readonly onDismiss: () => void }) {
-  const card = godCardDefinition(god)
-  const reducedMotion = useReducedMotion()
-  const revealTransition = { duration: reducedMotion ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] as const }
-  return <motion.div className="god-reveal" role="dialog" aria-modal="true" aria-label={`${card.deityName} revealed`} onClick={onDismiss} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.3 }}>
-    <motion.p className="god-reveal__eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.2 }}>{playerName} invoked</motion.p>
-    <div className="god-reveal__cards" aria-hidden="true">
-      <motion.div className="god-reveal__back" initial={{ opacity: 1, rotateY: 0, scale: 0.86 }} animate={reducedMotion ? { opacity: 0 } : { opacity: [1, 1, 0], rotateY: [0, 0, 90], scale: [0.86, 1, 1] }} transition={{ duration: reducedMotion ? 0 : 1.1, times: [0, 0.35, 1], ease: [0.22, 1, 0.36, 1] }}><GameCard card={card} face="back" size="preview" /></motion.div>
-      <motion.div className="god-reveal__front" initial={{ opacity: 0, rotateY: reducedMotion ? 0 : -90, scale: reducedMotion ? 1 : 0.86 }} animate={{ opacity: 1, rotateY: 0, scale: 1 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.42 }}><GameCard card={card} size="preview" /></motion.div>
-    </div>
-    <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.8 }}>{card.deityName}</motion.h2>
-    <motion.p className="god-reveal__effect" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.9 }}>{card.effectName}</motion.p>
-    <motion.button type="button" onClick={onDismiss} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 1 }}>Continue</motion.button>
-  </motion.div>
-}
-
-type PendingChoice = Exclude<GameSnapshot["state"]["pendingChoice"], null>
-type ChoiceCard = { readonly id: string; readonly kind: "number" | "modifier" | "god"; readonly value?: number; readonly operation?: "add" | "multiply" }
-type ChoiceProps<Kind extends PendingChoice["kind"]> = {
-  readonly choice: Extract<PendingChoice, { readonly kind: Kind }>
-  readonly onSubmit: (choiceId: string, selection: unknown) => void
-}
-type PlayerChoiceProps<Kind extends PendingChoice["kind"]> = ChoiceProps<Kind> & {
-  readonly players: readonly GameSnapshot["state"]["players"][number][]
-}
-
-function GodChoicePanel({ choice, players, onSubmit }: { readonly choice: PendingChoice; readonly players: readonly GameSnapshot["state"]["players"][number][]; readonly onSubmit: (choiceId: string, selection: unknown) => void }) {
-  switch (choice.kind) {
-    case "choosePlayers": return <PlayerChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "choosePlayerNumber": return <NumberChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "chooseHermesExchange": return <HermesChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "chooseDiscardNumber":
-    case "chooseDiscardModifier": return <DiscardChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "reorderDeckTop": return <DeckOrderChoice choice={choice} onSubmit={onSubmit} />
-  }
-}
-
-function PlayerChoice({ choice, players, onSubmit }: PlayerChoiceProps<"choosePlayers">) {
-  const [selected, setSelected] = useState<readonly string[]>([])
-  useEffect(() => setSelected([]), [choice.id])
-  const eligible = players.filter((player) => choice.eligiblePlayerIds.includes(player.id))
-  const toggle = (id: string) => setSelected((current) => current.includes(id)
-    ? current.filter((candidate) => candidate !== id)
-    : current.length < choice.max ? [...current, id] : current)
-  return <div className="god-choice"><p>{choice.god} needs {choice.min === choice.max ? `${choice.min} player${choice.min === 1 ? "" : "s"}` : `${choice.min}–${choice.max} players`}.</p><div className="god-choice__options">{eligible.map((player) => <button key={player.id} type="button" data-selected={selected.includes(player.id) || undefined} onClick={() => toggle(player.id)}>{player.name}</button>)}</div><button type="button" className="god-choice__confirm" disabled={selected.length < choice.min || selected.length > choice.max} onClick={() => onSubmit(choice.id, selected)}>Confirm</button></div>
-}
-
-function NumberChoice({ choice, players, onSubmit }: PlayerChoiceProps<"choosePlayerNumber">) {
-  const options = choice.eligible.flatMap((entry) => {
-    const player = players.find((candidate) => candidate.id === entry.playerId)
-    return entry.instanceIds.flatMap((instanceId) => {
-      const card = player?.numberCards.find((candidate) => candidate.instanceId === instanceId)
-      return card === undefined || player === undefined ? [] : [{ player, instanceId, value: card.value }]
-    })
-  })
-  return <div className="god-choice"><p>{choice.god} lets you choose a number card.</p><div className="god-choice__options">{options.map((option) => <button key={option.instanceId} type="button" onClick={() => onSubmit(choice.id, { playerId: option.player.id, instanceId: option.instanceId })}>{option.player.name}: {option.value}</button>)}</div></div>
-}
-
-function HermesChoice({ choice, players, onSubmit }: PlayerChoiceProps<"chooseHermesExchange">) {
-  const [selected, setSelected] = useState<readonly { readonly playerId: string; readonly instanceId: string }[]>([])
-  useEffect(() => setSelected([]), [choice.id])
-  const options = choice.eligible.flatMap((entry) => {
-    const player = players.find((candidate) => candidate.id === entry.playerId)
-    return entry.instanceIds.flatMap((instanceId) => {
-      const card = player?.numberCards.find((candidate) => candidate.instanceId === instanceId)
-      return card === undefined || player === undefined ? [] : [{ player, instanceId, value: card.value }]
-    })
-  })
-  const choose = (playerId: string, instanceId: string) => setSelected((current) => {
-    if (current.some((card) => card.instanceId === instanceId)) return current.filter((card) => card.instanceId !== instanceId)
-    if (current.length === 1 && current[0]?.playerId === playerId) return current
-    return current.length < 2 ? [...current, { playerId, instanceId }] : current
-  })
-  return <div className="god-choice"><p>Choose one number card from each of two players.</p><div className="god-choice__options">{options.map((option) => <button key={option.instanceId} type="button" data-selected={selected.some((card) => card.instanceId === option.instanceId) || undefined} onClick={() => choose(option.player.id, option.instanceId)}>{option.player.name}: {option.value}</button>)}</div><button type="button" className="god-choice__confirm" disabled={selected.length !== 2} onClick={() => onSubmit(choice.id, { left: selected[0], right: selected[1] })}>Exchange cards</button></div>
-}
-
-function DiscardChoice({ choice, players, onSubmit }: PlayerChoiceProps<"chooseDiscardNumber" | "chooseDiscardModifier">) {
-  const [cardId, setCardId] = useState<string | null>(null)
-  const [targetId, setTargetId] = useState<string | null>(null)
-  useEffect(() => { setCardId(null); setTargetId(null) }, [choice.id])
-  const cards = (choice.cards ?? []) as readonly ChoiceCard[]
-  const targets = players.filter((player) => choice.eligiblePlayerIds.includes(player.id))
-  const label = choice.kind === "chooseDiscardNumber" ? "number" : "modifier"
-  return <div className="god-choice"><p>Choose a discarded {label} and its recipient.</p><div className="god-choice__options">{cards.map((card) => <button key={card.id} type="button" data-selected={card.id === cardId || undefined} onClick={() => setCardId(card.id)}>{choiceCardLabel(card)}</button>)}</div><div className="god-choice__options">{targets.map((player) => <button key={player.id} type="button" data-selected={player.id === targetId || undefined} onClick={() => setTargetId(player.id)}>{player.name}</button>)}</div><button type="button" className="god-choice__confirm" disabled={cardId === null || targetId === null} onClick={() => onSubmit(choice.id, { physicalCardId: cardId, targetId })}>Confirm</button></div>
-}
-
-function DeckOrderChoice({ choice, onSubmit }: ChoiceProps<"reorderDeckTop">) {
-  const [order, setOrder] = useState<readonly string[]>(choice.physicalCardIds ?? [])
-  useEffect(() => setOrder(choice.physicalCardIds ?? []), [choice.id, choice.physicalCardIds])
-  const cardsById = new Map(((choice.cards ?? []) as readonly ChoiceCard[]).map((card) => [card.id, card]))
-  const move = (index: number, direction: -1 | 1) => setOrder((current) => {
-    const destination = index + direction
-    if (destination < 0 || destination >= current.length) return current
-    const next = [...current]
-    const currentCard = next[index]
-    const destinationCard = next[destination]
-    if (currentCard === undefined || destinationCard === undefined) return current
-    next[index] = destinationCard
-    next[destination] = currentCard
-    return next
-  })
-  return <div className="god-choice"><p>Arrange the next cards in draw order.</p><div className="god-choice__order">{order.map((id, index) => <div key={id}><span>{index + 1}. {choiceCardLabel(cardsById.get(id))}</span><button type="button" onClick={() => move(index, -1)} aria-label="Move earlier">↑</button><button type="button" onClick={() => move(index, 1)} aria-label="Move later">↓</button></div>)}</div><button type="button" className="god-choice__confirm" onClick={() => onSubmit(choice.id, order)}>Set order</button></div>
-}
-
-function choiceCardLabel(card: ChoiceCard | undefined): string {
-  if (card === undefined) return "Unknown card"
-  if (card.kind === "number") return `Number ${card.value ?? ""}`
-  if (card.kind === "modifier") return card.operation === "multiply" ? "Double modifier" : `+${card.value ?? ""} modifier`
-  return "God card"
+function PlusIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
 }
 
 function Lobby({ snapshot, roomCode, isHost, canStart, error, onStart, onEnd }: { readonly snapshot: GameSnapshot; readonly roomCode: string; readonly isHost: boolean; readonly canStart: boolean; readonly error: string | null; readonly onStart: () => void; readonly onEnd: () => void }) {
   const players = snapshot.state.players
   const emptySeats = Array.from({ length: maximumPlayers - players.length })
   const hasStarted = snapshot.state.phase !== "lobby"
-  return <main className="min-h-screen bg-night px-5 py-7 text-parchment md:px-10 md:py-10">
-    <header className="mx-auto flex w-full max-w-4xl items-center justify-between gap-5"><div className="font-display text-2xl font-bold">Flip Seven</div><span className="rounded-full bg-bronze/15 px-3 py-1 text-sm font-bold text-bronze">{players.length} / {maximumPlayers} players</span></header>
-    <section className="mx-auto mt-16 w-full max-w-4xl" aria-labelledby="room-title">
-      <p className="text-sm font-bold text-bronze">Room code</p>
-      <div className="mt-2 flex flex-wrap items-end justify-between gap-5"><div><h1 id="room-title" className="font-display text-5xl font-bold tracking-[-0.025em]">{roomCode}</h1><p className="mt-3 text-slate-300">Share this code with your friends. The table seats up to four.</p></div>{isHost && <div className="flex gap-3">{!hasStarted && <button type="button" onClick={onStart} disabled={!canStart} className="rounded-xl bg-bronze px-5 py-3 font-bold text-night transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-bronze focus:ring-offset-2 focus:ring-offset-night disabled:cursor-not-allowed disabled:opacity-45">{canStart ? "Start game" : `Need ${3 - players.length} more player${players.length === 2 ? "" : "s"}`}</button>}<button type="button" onClick={onEnd} className="rounded-xl border border-red-400/60 px-4 py-3 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button></div>}</div>
-      <ol className="mt-12 grid gap-3 sm:grid-cols-2">{players.map((player) => <li key={player.id} className="flex items-center gap-4 rounded-xl bg-slate-900 px-5 py-4"><span className="grid size-9 place-items-center rounded-full bg-bronze text-sm font-extrabold text-night">{player.seat + 1}</span><div><p className="font-bold text-white">{player.name}</p><p className="text-sm text-slate-400">{player.seat === 0 ? "Host" : "Ready"}</p></div></li>)}{emptySeats.map((_, index) => <li key={`empty-${index}`} className="flex items-center gap-4 rounded-xl border border-dashed border-slate-700 px-5 py-4 text-slate-400"><span className="grid size-9 place-items-center rounded-full border border-slate-700 text-sm">+</span>Waiting for player</li>)}</ol>
-      {!isHost && !hasStarted && <p className="mt-8 text-sm text-slate-300">Waiting for the host to start once at least three players have joined.</p>}
-      {hasStarted && <p className="mt-8 rounded-lg bg-emerald-950/50 px-4 py-3 text-sm font-medium text-emerald-200">The game has started. Gameplay table coming next.</p>}
-      {error && <p className="mt-5 rounded-lg bg-red-950/60 px-4 py-3 text-sm font-medium text-red-200" role="alert">{error}</p>}
+  const playersNeeded = Math.max(0, 3 - players.length)
+
+  return <main className="waiting-lobby text-parchment">
+    <div className="waiting-lobby__veil" />
+    <header className="waiting-lobby__header">
+      <div className="waiting-lobby__brand"><span aria-hidden="true">VII</span><strong>Favour of Olympus</strong></div>
+      <div className="waiting-lobby__count" aria-label={`${players.length} of ${maximumPlayers} players joined`}>
+        <span>{players.length}</span> / {maximumPlayers} players
+      </div>
+    </header>
+
+    <section className="waiting-lobby__layout" aria-labelledby="room-title">
+      <div className="lobby-invitation">
+        <div className="lobby-invitation__ornament" aria-hidden="true"><span>VII</span></div>
+        <p className="lobby-invitation__eyebrow">Private table</p>
+        <h1 id="room-title">Gather your rivals</h1>
+        <p className="lobby-invitation__intro">Share this room code with your friends. The gods will receive up to four players.</p>
+
+        <div className="lobby-code" aria-label={`Room code ${roomCode}`}>
+          <span>Room code</span>
+          <strong>{roomCode}</strong>
+        </div>
+
+        <div className="lobby-roster__heading">
+          <div><p>Seats at the table</p><span>{players.length >= 3 ? "The table is ready" : `Waiting for ${playersNeeded} more player${playersNeeded === 1 ? "" : "s"}`}</span></div>
+          <div className="lobby-progress" aria-hidden="true">{Array.from({ length: maximumPlayers }, (_, index) => <span key={index} className={index < players.length ? "is-filled" : ""} />)}</div>
+        </div>
+
+        <ol className="lobby-roster">
+          {players.map((player) => <li key={player.id} className="lobby-seat lobby-seat--filled">
+            <span className="lobby-seat__number">{player.seat + 1}</span>
+            <div><p>{player.name}</p><span>{player.seat === 0 ? "Host · Ready" : "Ready"}</span></div>
+          </li>)}
+          {emptySeats.map((_, index) => <li key={`empty-${index}`} className="lobby-seat lobby-seat--empty">
+            <span className="lobby-seat__number"><PlusIcon /></span>
+            <div><p>Open seat</p><span>Waiting for player</span></div>
+          </li>)}
+        </ol>
+
+        {isHost && <div className="lobby-actions">
+          {!hasStarted && <button type="button" onClick={onStart} disabled={!canStart} className="lobby-start" aria-describedby={!canStart ? "lobby-start-help" : undefined}>
+            <span>{canStart ? "Start the game" : `Need ${playersNeeded} more player${playersNeeded === 1 ? "" : "s"}`}</span>
+            {canStart && <ChevronIcon />}
+          </button>}
+          {!canStart && !hasStarted && <p id="lobby-start-help">A game needs at least three players.</p>}
+          <button type="button" onClick={onEnd} className="lobby-end">End this lobby</button>
+        </div>}
+
+        {!isHost && !hasStarted && <p className="lobby-waiting-note">The host can begin once at least three players have joined.</p>}
+        {hasStarted && <p className="lobby-success">The game has started. Entering the table…</p>}
+        {error && <p className="entry-error" role="alert">{error}</p>}
+      </div>
     </section>
   </main>
 }
