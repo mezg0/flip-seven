@@ -41,8 +41,9 @@ export function GameCard({
   const theme = card.kind === "power" ? card.theme : "bronze"
 
   return (
-    <div
-      className="game-card"
+    <div className="game-card-shell" data-size={size}>
+      <div
+        className="game-card"
       data-disabled={disabled || undefined}
       data-face={face}
       data-kind={card.kind}
@@ -51,7 +52,7 @@ export function GameCard({
       data-theme={theme}
       role="img"
       aria-label={getAccessibleName(card, face)}
-    >
+      >
       {face === "back" ? (
         <>
           <img
@@ -135,6 +136,7 @@ export function GameCard({
           )}
         </>
       )}
+      </div>
     </div>
   )
 }

@@ -1,0 +1,130 @@
+.table-layout {
+  position: relative;
+  min-height: calc(100dvh - 7.5rem);
+  overflow: visible;
+  border-radius: 0.75rem;
+  background-image:
+    linear-gradient(to bottom, oklch(0.12 0.025 250 / 36%), oklch(0.07 0.018 250 / 58%)),
+    url("/assets/stages/mount-olympus-v1.png");
+  background-position: center;
+  background-size: cover;
+}
+
+.table-leaderboard {
+  position: absolute;
+  z-index: 1;
+  top: 1rem;
+  left: 1rem;
+  min-width: 9rem;
+  color: oklch(0.9 0.025 82);
+}
+
+.table-leaderboard > p { margin: 0 0 0.35rem; color: oklch(0.72 0.06 48); font-size: 0.65rem; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+.table-leaderboard ol { display: grid; gap: 0.2rem; margin: 0; padding: 0; list-style: none; }
+.table-leaderboard li { display: flex; justify-content: space-between; gap: 1.25rem; color: oklch(0.82 0.025 250); font-size: 0.78rem; }
+.table-leaderboard strong { color: oklch(0.95 0.025 82); font-family: Cinzel, Georgia, serif; }
+
+.table-layout__deck {
+  position: absolute;
+  top: 52%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  justify-items: center;
+  gap: 0.6rem;
+  transform: translate(-50%, -50%);
+}
+
+.table-layout__deck p { margin: 0; color: oklch(0.62 0.025 250); font-size: 0.75rem; white-space: nowrap; }
+.table-layout__deck strong { color: oklch(0.94 0.025 82); font-family: Cinzel, Georgia, serif; font-size: 1.25rem; }
+.table-layout__deck .game-card-shell { --card-width: clamp(3.25rem, 4.5vw, 4rem); }
+
+.table-player {
+  position: absolute;
+  z-index: 3;
+  width: min(20rem, 32%);
+  min-height: 8rem;
+  padding: 0.35rem;
+  color: oklch(0.86 0.02 250);
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.table-player--active { color: oklch(0.98 0.04 82); }
+.table-player--active .table-player__identity div > p:first-child { color: oklch(0.84 0.14 65); }
+.table-player--you .table-player__identity div > p:first-child { color: oklch(0.97 0.035 82); }
+.table-player--top { top: 1.25rem; left: 50%; transform: translateX(-50%); }
+.table-player--left { top: 35%; left: 1.25rem; transform: translateY(-50%); }
+.table-player--right { top: 35%; right: 1.25rem; transform: translateY(-50%); }
+.table-player--bottom {
+  bottom: 0.35rem;
+  left: 50%;
+  display: flex;
+  flex-direction: column-reverse;
+  transform: translateX(-50%);
+  width: min(27rem, 46%);
+}
+
+.table-player--bottom .table-player__hand {
+  justify-content: center;
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+}
+
+.table-player--bottom .table-player__hand .game-card {
+  translate: 0 -0.35rem;
+}
+
+.table-player__identity { display: flex; align-items: baseline; justify-content: center; text-align: center; }
+.table-player__identity p { margin: 0; }
+.table-player__identity div > p:first-child { color: white; font-weight: 750; }
+.table-player__identity span { display: inline-block; margin-left: 0.45rem; color: oklch(0.72 0.06 48); font-size: 0.7rem; font-weight: 600; }
+.table-player__identity small { display: block; margin-top: 0.15rem; color: oklch(0.55 0.02 250); font-size: 0.72rem; }
+
+.table-player__hand { display: flex; min-height: 5rem; margin-top: 0.35rem; overflow: visible; align-items: end; justify-content: center; padding: 0.2rem 0.1rem; }
+.table-player__hand > p { margin: auto 0; color: oklch(0.55 0.02 250); font-size: 0.78rem; }
+
+.table-player:not(.table-player--bottom) .game-card-shell {
+  --card-width: clamp(3.75rem, 5.5vw, 4.75rem);
+}
+
+.table-layout .game-card[data-kind="number"] .game-card__series,
+.table-layout .game-card[data-kind="number"] .game-card__kind {
+  display: none;
+}
+
+.game-action-panel {
+  position: absolute;
+  z-index: 4;
+  top: 1rem;
+  right: 1.25rem;
+  width: min(19rem, 28%);
+  padding: 0.9rem;
+  border: 1px solid oklch(0.32 0.025 250);
+  border-radius: 0.75rem;
+  background: oklch(0.12 0.019 250 / 94%);
+}
+
+@media (max-width: 800px) {
+  .table-layout { min-height: calc(100dvh - 6rem); }
+  .table-player { width: min(15rem, calc(50% - 1.5rem)); }
+  .table-player--top { top: 4.5rem; }
+  .table-player--left { top: 24%; left: 0.7rem; transform: none; }
+  .table-player--right { top: 24%; right: 0.7rem; transform: none; }
+  .table-player--bottom { bottom: 0.35rem; width: min(22rem, calc(100% - 1.5rem)); }
+  .table-layout__deck { top: 55%; }
+}
+
+@media (max-width: 560px) {
+  .table-layout { min-height: calc(100dvh - 5rem); }
+  .table-player { width: calc(50% - 1.1rem); padding: 0.6rem; }
+  .table-player--top { top: 4.25rem; }
+  .table-player--left { left: 0.55rem; }
+  .table-player--right { right: 0.55rem; }
+  .table-player__hand { min-height: 4.5rem; }
+  .table-layout__deck { top: 57%; }
+  .game-action-panel { top: auto; right: 50%; bottom: 9rem; width: min(20rem, calc(100% - 1rem)); transform: translateX(50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-player { transition: none; }
+}

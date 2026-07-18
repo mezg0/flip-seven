@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { io } from "socket.io-client"
+import type { CardDefinition } from "@flip-seven/content"
 import type {
   GameClaimResponse,
   GameCreateResponse,
@@ -8,6 +9,8 @@ import type {
   GameSnapshot,
   ServerStatus,
 } from "@flip-seven/protocol"
+import { GameCard } from "./components/GameCard.tsx"
+import "./components/GameTable.css"
 
 const serverUrl = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3000"
 const maximumPlayers = 4
@@ -199,23 +202,59 @@ function GameTable({ snapshot, playerId, isHost, error, onCommand, onEnd }: { re
   const you = state.players.find((player) => player.id === playerId)
   const isYourTurn = currentPlayer?.id === playerId && state.phase === "awaitingTurnChoice"
   const targetRequest = state.phase === "awaitingActionTarget" && state.pendingAction?.chooserId === playerId
+  const showChoice = isYourTurn || targetRequest || error !== null
 
-  return <main className="min-h-screen bg-night px-4 py-5 text-parchment md:px-8 md:py-8">
-    <header className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4"><div><p className="text-xs font-bold tracking-[0.08em] text-bronze uppercase">Round {state.roundNumber}</p><h1 className="font-display text-2xl font-bold">Flip Seven</h1></div><div className="flex items-center gap-4"><div className="text-right"><p className="text-sm text-slate-400">Deck</p><p className="font-display text-2xl font-bold">{state.remainingCardCount}</p></div>{isHost && <button type="button" onClick={onEnd} className="rounded-lg border border-red-400/60 px-3 py-2 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button>}</div></header>
-    <section className="mx-auto mt-8 grid w-full max-w-6xl gap-5 lg:grid-cols-[minmax(0,1fr)_17rem]" aria-label="Game table">
-      <div className="rounded-2xl bg-[oklch(0.16_0.032_158)] p-4 shadow-[inset_0_0_0_1px_oklch(0.35_0.07_158)] md:p-7">
-        <div className="mb-8 flex items-center justify-between gap-4"><p className="text-sm font-bold text-emerald-100">{currentPlayer ? `${currentPlayer.name}'s turn` : "Resolving the table"}</p><div className="flex items-center gap-2"><div className="grid h-20 w-14 place-items-center rounded-lg border-2 border-bronze bg-slate-950 text-xs font-bold text-bronze">DRAW</div><p className="text-sm text-emerald-100/75">{state.discardCount} discarded</p></div></div>
-        <ol className="grid gap-3 sm:grid-cols-2">{state.players.map((player) => <PlayerArea key={player.id} player={player} isCurrent={player.id === currentPlayer?.id} isYou={player.id === playerId} />)}</ol>
+  return <main className="min-h-screen bg-night px-3 py-4 text-parchment md:px-6 md:py-6">
+    <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4"><div><p className="text-xs font-bold tracking-[0.08em] text-bronze uppercase">Round {state.roundNumber}</p><h1 className="font-display text-2xl font-bold">Flip Seven</h1></div><div className="flex items-center gap-4"><p className="hidden text-sm text-slate-400 sm:block">First to 200 wins</p>{isHost && <button type="button" onClick={onEnd} className="rounded-lg border border-red-400/60 px-3 py-2 text-sm font-bold text-red-200 transition hover:bg-red-950/60 focus:outline-none focus:ring-2 focus:ring-red-300">End game</button>}</div></header>
+    <section className="mx-auto mt-7 w-full max-w-7xl" aria-label="Game table">
+      <div className="table-layout" data-players={state.players.length}>
+        <Leaderboard players={state.players} />
+        <div className="table-layout__deck"><GameCard card={numberCardDefinition(0)} face="back" size="table" /><p><strong>{state.remainingCardCount}</strong> cards left</p></div>
+        <ol className="contents">{state.players.map((player) => <PlayerArea key={player.id} player={player} position={tablePositionFor(player.id, playerId, state.players.map((candidate) => candidate.id))} isCurrent={player.id === currentPlayer?.id} isYou={player.id === playerId} />)}</ol>
+        {showChoice && <aside className="game-action-panel" aria-live="polite"><h2 className="font-display text-lg font-bold">Your choice</h2>{you === undefined ? <p className="mt-1 text-sm text-slate-400">Waiting for your seat.</p> : targetRequest ? <><p className="mt-1 text-sm leading-relaxed text-slate-300">Choose who receives {state.pendingAction?.action === "freeze" ? "the freeze" : "this action"}.</p><div className="mt-3 grid gap-2">{state.players.filter((player) => player.id !== playerId && player.roundStatus === "active").map((player) => <button key={player.id} type="button" onClick={() => onCommand("SELECT_ACTION_TARGET", player.id)} className="rounded-lg bg-slate-700 px-3 py-2 text-left text-sm font-bold transition hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-bronze">{player.name}</button>)}</div></> : isYourTurn ? <><p className="mt-1 text-sm leading-relaxed text-slate-300">Press your luck, or preserve this round’s score.</p><div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => onCommand("HIT")} className="rounded-lg bg-bronze px-3 py-2.5 font-bold text-night transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-bronze">Hit</button><button type="button" onClick={() => onCommand("STAY")} disabled={you.numberCards.length === 0} className="rounded-lg border border-slate-500 px-3 py-2.5 font-bold transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:cursor-not-allowed disabled:opacity-45">Stay</button></div></> : null}{error && <p className="mt-3 rounded-lg bg-red-950/60 px-3 py-2 text-sm text-red-200" role="alert">{error}</p>}</aside>}
       </div>
-      <aside className="rounded-xl bg-slate-900 p-5"><h2 className="font-display text-xl font-bold">Your choice</h2>{you === undefined ? <p className="mt-3 text-sm text-slate-400">Waiting for your seat.</p> : targetRequest ? <><p className="mt-3 text-sm leading-relaxed text-slate-300">Choose who receives {state.pendingAction?.action === "freeze" ? "the freeze" : "this action"}.</p><div className="mt-4 grid gap-2">{state.players.filter((player) => player.id !== playerId && player.roundStatus === "active").map((player) => <button key={player.id} type="button" onClick={() => onCommand("SELECT_ACTION_TARGET", player.id)} className="rounded-lg bg-slate-700 px-3 py-2 text-left text-sm font-bold transition hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-bronze">{player.name}</button>)}</div></> : isYourTurn ? <><p className="mt-3 text-sm leading-relaxed text-slate-300">Draw again and risk a duplicate, or lock in your score.</p><div className="mt-5 grid grid-cols-2 gap-3"><button type="button" onClick={() => onCommand("HIT")} className="rounded-lg bg-bronze px-3 py-3 font-bold text-night transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-bronze">Hit</button><button type="button" onClick={() => onCommand("STAY")} disabled={you.numberCards.length === 0} className="rounded-lg border border-slate-500 px-3 py-3 font-bold transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:cursor-not-allowed disabled:opacity-45">Stay</button></div></> : <p className="mt-3 text-sm leading-relaxed text-slate-300">{state.phase === "gameOver" ? "The game is over." : "Watch the table — your next decision will appear here."}</p>}{error && <p className="mt-5 rounded-lg bg-red-950/60 px-3 py-2 text-sm text-red-200" role="alert">{error}</p>}</aside>
     </section>
   </main>
 }
 
-function PlayerArea({ player, isCurrent, isYou }: { readonly player: GameSnapshot["state"]["players"][number]; readonly isCurrent: boolean; readonly isYou: boolean }) {
-  const visibleCards = [...player.numberCards.map((card) => `#${card.value}`), ...player.modifierCards.map((card) => card.operation === "add" ? `+${card.value}` : `×${card.value}`), ...player.actionCardsInFront.map((card) => card.action === "flipThree" ? "Flip 3" : card.action === "secondChance" ? "2nd chance" : "Freeze")]
-  return <li className={`min-h-40 rounded-xl p-4 transition ${isCurrent ? "bg-emerald-800 ring-2 ring-bronze" : "bg-emerald-950/45"}`}><div className="flex items-start justify-between gap-3"><div><p className="font-bold text-white">{player.name}{isYou && <span className="ml-2 text-xs font-medium text-emerald-200">You</span>}</p><p className="mt-1 text-xs text-emerald-100/70">{player.roundStatus === "active" ? "Still playing" : player.roundStatus}</p></div><div className="text-right"><p className="text-xs text-emerald-100/70">Total</p><p className="font-display text-xl font-bold">{player.totalScore}</p></div></div><div className="mt-5 flex flex-wrap gap-2">{visibleCards.length > 0 ? visibleCards.map((card, index) => <span key={`${card}-${index}`} className="grid h-12 min-w-10 place-items-center rounded-md bg-slate-100 px-2 text-sm font-extrabold text-slate-950 shadow-sm">{card}</span>) : <span className="text-sm text-emerald-100/60">No cards yet</span>}</div></li>
+function PlayerArea({ player, position, isCurrent, isYou }: { readonly player: GameSnapshot["state"]["players"][number]; readonly position: "top" | "left" | "right" | "bottom"; readonly isCurrent: boolean; readonly isYou: boolean }) {
+  const cards = [
+    ...player.numberCards.map((card) => ({ id: card.id, definition: numberCardDefinition(card.value) })),
+    ...player.modifierCards.map((card) => ({ id: card.id, definition: modifierCardDefinition(card.operation, card.value) })),
+    ...player.actionCardsInFront.map((card) => ({ id: card.id, definition: actionCardDefinition(card.action) })),
+  ]
+  return <li className={`table-player table-player--${position} ${isCurrent ? "table-player--active" : ""} ${isYou ? "table-player--you" : ""}`}><div className="table-player__identity"><div><p>{player.name}{isYou && <span>You</span>}</p>{player.roundStatus !== "active" && <small>{player.roundStatus}</small>}</div></div><div className="table-player__hand">{cards.length > 0 ? cards.map((card, index) => <div key={card.id} className={index === 0 ? "shrink-0" : "-ml-12 shrink-0 sm:-ml-10"}><GameCard card={card.definition} size="table" /></div>) : <p>Waiting for a card</p>}</div></li>
 }
+
+function Leaderboard({ players }: { readonly players: readonly GameSnapshot["state"]["players"][number][] }) {
+  const ranking = [...players].sort((left, right) => right.totalScore - left.totalScore || left.seat - right.seat)
+  return <aside className="table-leaderboard" aria-label="Current scores"><p>Current scores</p><ol>{ranking.map((player) => <li key={player.id}><span>{player.name}</span><strong>{player.totalScore}</strong></li>)}</ol></aside>
+}
+
+function tablePositionFor(playerId: string, currentPlayerId: string, playerIds: readonly string[]): "top" | "left" | "right" | "bottom" {
+  if (playerId === currentPlayerId) return "bottom"
+  const opponentIndex = playerIds.filter((id) => id !== currentPlayerId).indexOf(playerId)
+  if (playerIds.length === 3) {
+    return (["left", "right"] as const)[opponentIndex] ?? "left"
+  }
+  return (["top", "left", "right"] as const)[opponentIndex] ?? "top"
+}
+
+function numberCardDefinition(value: number): CardDefinition {
+  return { kind: "number", value: value as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12, figureName: "Olympian number", artwork: "cards/numbers/placeholder.svg" }
+}
+
+function modifierCardDefinition(operation: "add" | "multiply", value: number): CardDefinition {
+  const effectName = operation === "add" ? `+${value} favour` : "Double favour"
+  return { kind: "power", deityName: operation === "add" ? "Hephaestus" : "Zeus", effectName, description: operation === "add" ? `Add ${value} to your round score.` : "Double your number-card total.", artwork: "cards/powers/hermes-test.jpg", icon: "cards/icons/placeholder.svg", theme: operation === "add" ? "ember" : "storm" }
+}
+
+function actionCardDefinition(action: "freeze" | "flipThree" | "secondChance"): CardDefinition {
+  const details = { freeze: ["Artemis", "Freeze", "Choose a player. They must stay."], flipThree: ["Hermes", "Flip three", "Choose a player to draw three cards."], secondChance: ["Athena", "Second chance", "Ignore one duplicate number."] } as const
+  const [deityName, effectName, description] = details[action]
+  return { kind: "power", deityName, effectName, description, artwork: "cards/powers/hermes-test.jpg", icon: "cards/icons/placeholder.svg", theme: "storm" }
+}
+
 
 function validUsername(value: string): boolean { return /^[a-zA-Z0-9 _-]{2,64}$/.test(value.trim()) }
 function toPlayerId(value: string): string { return value.trim().toLowerCase().replace(/\s+/g, "-") }
