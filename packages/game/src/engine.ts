@@ -184,20 +184,35 @@ export function toPublicGameState(state: GameState, viewerId?: string): PublicGa
     remainingCardCount: state.drawPile.length,
     discardCount: state.discardPile.length,
     roundNumber: state.roundNumber,
-    pendingChoice: publicPendingChoice(state.pendingChoice, viewerId),
+    pendingChoice: publicPendingChoice(state, viewerId),
     flipSevenPlayerIds: [...state.flipSevenPlayerIds],
     winnerId: state.winnerId,
     revision: state.revision,
   }
 }
 
-function publicPendingChoice(choice: PendingChoice | null, viewerId?: string): PublicPendingChoice | null {
+function publicPendingChoice(state: GameState, viewerId?: string): PublicPendingChoice | null {
+  const { pendingChoice: choice } = state
   if (choice === null) return null
   const copy = structuredClone(choice)
   if (copy.kind === "reorderDeckTop" && copy.controllerId !== viewerId) {
-    return { ...copy, physicalCardIds: [] }
+    return { ...copy, physicalCardIds: [], cards: [] }
+  }
+  if (copy.kind === "reorderDeckTop") {
+    return { ...copy, cards: cardsById(state.resolvingCards, copy.physicalCardIds) }
+  }
+  if (copy.kind === "chooseDiscardNumber" || copy.kind === "chooseDiscardModifier") {
+    return { ...copy, cards: cardsById(state.discardPile, copy.physicalCardIds) }
   }
   return copy
+}
+
+function cardsById(cards: readonly Card[], ids: readonly string[]): Card[] {
+  const byId = new Map(cards.map((card) => [card.id, card]))
+  return ids.flatMap((id) => {
+    const card = byId.get(id)
+    return card === undefined ? [] : [card]
+  })
 }
 
 function validatePlayers(players: readonly PlayerInput[], maximumPlayers: number): void {
@@ -334,7 +349,7 @@ function pushTask(state: GameState, task: ResolutionTask): void {
 }
 
 function revealAndResolve(context: EngineContext, recipientId: string, source: DrawSource): void {
-  const card = drawCard(context)
+  const card = source === "initialDeal" ? drawOpeningCard(context) : drawCard(context)
   context.state.resolvingCards.push(card)
   emit(context, { type: "CARD_REVEALED", recipientId, card, source })
 
@@ -350,6 +365,17 @@ function revealAndResolve(context: EngineContext, recipientId: string, source: D
     return
   }
   beginGodResolution(context, card.god, recipientId, card.id, true, true, card.god)
+}
+
+function drawOpeningCard(context: EngineContext): Card {
+  const { drawPile } = context.state
+  const index = drawPile.findLastIndex((card) => card.kind !== "god")
+  if (index < 0) {
+    throw new GameRuleError("NO_DRAWABLE_CARDS", "No non-God cards remain for the opening deal")
+  }
+  const [card] = drawPile.splice(index, 1)
+  if (card === undefined) throw new Error("Opening card disappeared from the draw pile")
+  return card
 }
 
 function drawCard(context: EngineContext): Card {

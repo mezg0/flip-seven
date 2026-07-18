@@ -129,7 +129,12 @@ export class GameRegistry {
     playerId: string,
     playerName: string,
   ): Effect.Effect<ClaimedGame, RegistryError | GameRuleError> {
-    return SynchronizedRef.modifyEffect(this.#games, (games) => {
+    return SynchronizedRef.modifyEffect<
+      ReadonlyMap<string, RegisteredGame>,
+      ClaimedGame,
+      RegistryError | GameRuleError,
+      never
+    >(this.#games, (games) => {
       const game = games.get(gameId)
       if (game === undefined) return Effect.fail(gameNotFound(gameId))
       if (game.state.phase !== "lobby") {

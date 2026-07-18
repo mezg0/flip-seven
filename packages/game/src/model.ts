@@ -196,7 +196,7 @@ export const defaultGameConfig: GameConfig = {
   targetScore: 200,
   minimumPlayers: 3,
   maximumPlayers: 4,
-  actionChoiceTimeoutMs: 30_000,
+  choiceTimeoutMs: 30_000,
   turnChoiceTimeoutMs: 30_000,
   disconnectedPlayerPolicy: "pause",
 }
@@ -281,9 +281,14 @@ export type ApplyCommandResult = {
   readonly events: GameEvent[]
 }
 
-export type PublicPendingChoice = Omit<PendingChoice, "physicalCardIds"> & {
+export type PublicChoiceCard = Extract<Card, { readonly kind: "number" | "modifier" | "god" }>
+
+type PublicPendingChoiceFor<Choice extends PendingChoice> = Choice extends PendingChoice ? Omit<Choice, "physicalCardIds"> & {
   readonly physicalCardIds?: readonly string[]
-}
+  readonly cards?: readonly PublicChoiceCard[]
+} : never
+
+export type PublicPendingChoice = PublicPendingChoiceFor<PendingChoice>
 
 export interface PublicGameState {
   readonly id: string

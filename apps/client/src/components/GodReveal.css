@@ -1,0 +1,64 @@
+.god-reveal {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: 2rem;
+  color: oklch(0.95 0.025 82);
+  background:
+    radial-gradient(circle at center, oklch(0.28 0.08 246 / 65%), oklch(0.05 0.015 250 / 94%) 70%),
+    oklch(0.05 0.015 250 / 94%);
+}
+
+.god-reveal::before {
+  position: absolute;
+  inset: 12% 18%;
+  border: 1px solid oklch(0.72 0.12 48 / 28%);
+  border-radius: 50%;
+  box-shadow: 0 0 5rem oklch(0.68 0.13 232 / 22%);
+  content: "";
+}
+
+.god-reveal__eyebrow,
+.god-reveal__effect,
+.god-reveal h2,
+.god-reveal button,
+.god-reveal__cards { z-index: 1; }
+
+.god-reveal__eyebrow {
+  margin: 0 0 1.25rem;
+  color: oklch(0.76 0.1 50);
+  font-size: 0.8rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.god-reveal__cards {
+  position: relative;
+  width: min(18rem, 62vw);
+  aspect-ratio: 2 / 3;
+  perspective: 70rem;
+}
+
+.god-reveal__cards .game-card-shell { --card-width: 100%; }
+.god-reveal__back,
+.god-reveal__front { position: absolute; inset: 0; backface-visibility: hidden; }
+.god-reveal__back { transform-origin: center; }
+.god-reveal__front { transform-origin: center; }
+
+.god-reveal h2 {
+  margin: 1.35rem 0 0;
+  font-family: Cinzel, Georgia, serif;
+  font-size: clamp(2rem, 6vw, 3.4rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.god-reveal__effect { margin: 0.4rem 0 1.25rem; color: oklch(0.76 0.08 233); font-size: 1rem; font-weight: 700; }
+.god-reveal button { border: 0; border-radius: 0.5rem; padding: 0.65rem 1rem; color: oklch(0.11 0.02 250); background: oklch(0.82 0.12 48); font-weight: 800; }
+.god-reveal button:focus-visible { outline: 3px solid white; outline-offset: 3px; }

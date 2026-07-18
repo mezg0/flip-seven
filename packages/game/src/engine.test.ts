@@ -93,6 +93,22 @@ describe("base flow with God cards", () => {
     expect(result.nextState.currentTurnSeat).toBe(1)
   })
 
+  it("skips God cards during the opening deal and leaves them in the deck", () => {
+    const state = createGame("opening-god", players, 1)
+    state.drawPile = [
+      numberCard("three", 3),
+      numberCard("two", 2),
+      numberCard("one", 1),
+      godCard("opening-zeus", "zeus"),
+    ]
+
+    const result = applyCommand(state, { type: "START_GAME", actorId: "p0" }).nextState
+
+    expect(result.players.map((player) => player.numberCards[0]?.value)).toEqual([1, 2, 3])
+    expect(result.drawPile.map((card) => card.id)).toEqual(["opening-zeus"])
+    expect(result.players.every((player) => player.godCardsInFront.length === 0)).toBe(true)
+  })
+
   it("rejects stale commands and allows a modifier-only stay", () => {
     const state = gameForTurn([numberCard("unused", 1)])
     state.players[0]?.modifierCards.push(modifierInstance("plus-eight", "add", 8))
