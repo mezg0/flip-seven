@@ -1,6 +1,8 @@
- # Flip 7 Web Game — Rules and Logic Specification
+# Flip 7 Web Game — Rules and Logic Specification
 
-Status: implementation-ready rules model for the base game, ruleset edition 3.1.
+Status: base-game reference. For the custom Greek-god version, `GOD_CARDS_GAME_LOGIC.md` is canonical and replaces this document's Action Card rules, deck total, duplicate protection, Flip Three handling, scoring additions, and related tests.
+
+> Do not implement the Action Card sections below for the Greek-god version. Use [GOD_CARDS_GAME_LOGIC.md](./GOD_CARDS_GAME_LOGIC.md) for all special-card behavior and edge-case resolution.
 
 This document describes game mechanics and not the publisher's artwork, wording, or branding. Before publishing a commercial or public clone, use an original name and original visual assets unless you have permission to use the Flip 7 trademark and copyrighted assets.
 
