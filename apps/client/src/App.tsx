@@ -16,6 +16,11 @@ import "./components/GodReveal.css"
 
 const serverUrl = import.meta.env.VITE_SERVER_URL ?? "http://localhost:3000"
 const maximumPlayers = 4
+const mythicAdjectives = ["Golden", "Stormborn", "Moonlit", "Swift", "Brazen", "Starlit", "Wild", "Laurel"] as const
+const mythicFigures = ["Oracle", "Titan", "Nymph", "Voyager", "Champion", "Sphinx", "Muse", "Griffin"] as const
+
+type EntryScreen = "title" | "gateway"
+type LobbyMode = "create" | "join"
 
 type StoredSession = {
   readonly gameId: string
@@ -35,6 +40,8 @@ export function App() {
   const [username, setUsername] = useState("")
   const [roomCode, setRoomCode] = useState("")
   const [session, setSession] = useState<StoredSession | null>(() => readSession())
+  const [entryScreen, setEntryScreen] = useState<EntryScreen>(() => readSession() === null ? "title" : "gateway")
+  const [lobbyMode, setLobbyMode] = useState<LobbyMode>("create")
   const [snapshot, setSnapshot] = useState<GameSnapshot | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -50,7 +57,9 @@ export function App() {
     nextSocket.on("game:snapshot", setSnapshot)
     nextSocket.on("game:ended", clearGame)
 
-    return () => { nextSocket.disconnect() }
+    return () => {
+      nextSocket.disconnect()
+    }
   }, [])
 
   useEffect(() => {
@@ -115,6 +124,13 @@ export function App() {
     })
   }
 
+  function generateUsername() {
+    const adjective = mythicAdjectives[Math.floor(Math.random() * mythicAdjectives.length)]
+    const figure = mythicFigures[Math.floor(Math.random() * mythicFigures.length)]
+    setUsername(`${adjective} ${figure}`)
+    setError(null)
+  }
+
   function joinLobby() {
     if (socket === null || !validUsername(username) || roomCode.trim().length === 0) return
     setIsSubmitting(true)
@@ -176,165 +192,117 @@ export function App() {
   }
 
   const usernameInvalid = username.length > 0 && !validUsername(username)
+  if (entryScreen === "title") {
+    return <TitleScreen status={status} onEnter={() => setEntryScreen("gateway")} />
+  }
+
   return (
-    <main className="min-h-screen bg-night px-5 py-7 text-parchment md:px-10 md:py-10">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between gap-5">
-        <div className="font-display text-2xl font-bold tracking-[-0.02em]">Flip Seven</div>
-        <div className="flex items-center gap-2 text-sm text-slate-300" role="status" aria-live="polite">
-          <span className={`size-2 rounded-full ${statusDotClassNames[status.status]}`} />
-          {status.status === "ready" ? "Connected" : status.status}
-        </div>
+    <main className="entry-screen text-parchment">
+      <div className="entry-screen__veil" />
+      <header className="entry-header">
+        <button type="button" className="entry-back" onClick={() => setEntryScreen("title")} aria-label="Back to title screen">
+          <BackIcon />
+          <span>Title</span>
+        </button>
+        <ConnectionStatus status={status} />
       </header>
 
-      <section className="mx-auto grid min-h-[calc(100vh-7rem)] w-full max-w-5xl place-items-center py-12" aria-labelledby="lobby-title">
-        <div className="w-full max-w-xl">
-          <p className="mb-3 text-sm font-bold text-bronze">A game for three or four</p>
-          <h1 id="lobby-title" className="font-display text-5xl font-bold leading-[0.95] tracking-[-0.03em] text-balance md:text-6xl">
-            Gather your gods.
-          </h1>
-          <p className="mt-5 max-w-lg text-lg leading-relaxed text-slate-300">
-            Pick a username, then create a room or enter a friend’s room code.
-          </p>
-
-          <label className="mt-10 block text-sm font-bold text-slate-200" htmlFor="username">
-            Your username
-          </label>
-          <input id="username" value={username} onChange={(event) => setUsername(event.target.value)} maxLength={64} autoComplete="nickname" placeholder="e.g. Athena" className="mt-2 w-full rounded-xl border border-slate-600 bg-slate-950 px-4 py-3 text-base text-white outline-none transition focus:border-bronze focus:ring-2 focus:ring-bronze/30" />
-          {usernameInvalid && <p className="mt-2 text-sm text-red-300">Use 2–64 letters, numbers, spaces, hyphens, or underscores.</p>}
-
-          <div className="mt-7 grid gap-4 sm:grid-cols-2">
-            <button type="button" onClick={createLobby} disabled={isSubmitting || status.status !== "ready" || !validUsername(username)} className="rounded-xl bg-bronze px-5 py-4 text-left font-bold text-night transition hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-bronze focus:ring-offset-2 focus:ring-offset-night disabled:cursor-not-allowed disabled:opacity-45">
-              Create a lobby
-              <span className="mt-1 block text-sm font-medium text-night/75">You’ll receive a room code to share.</span>
-            </button>
-            <div className="rounded-xl border border-slate-700 bg-slate-900/60 p-3">
-              <label className="sr-only" htmlFor="room-code">Room code</label>
-              <input id="room-code" value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} maxLength={24} placeholder="ROOM CODE" className="w-full bg-transparent px-2 py-1.5 text-sm font-bold tracking-[0.08em] text-white outline-none placeholder:text-slate-400" />
-              <button type="button" onClick={joinLobby} disabled={isSubmitting || status.status !== "ready" || !validUsername(username) || roomCode.trim().length === 0} className="mt-2 w-full rounded-lg bg-slate-100 px-3 py-2.5 font-bold text-slate-950 transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-white disabled:cursor-not-allowed disabled:opacity-45">Join lobby</button>
-            </div>
-          </div>
-          {error && <p className="mt-5 rounded-lg bg-red-950/60 px-4 py-3 text-sm font-medium text-red-200" role="alert">{error}</p>}
+      <section className="entry-layout" aria-labelledby="lobby-title">
+        <div className="entry-intro">
+          <p className="entry-kicker">The gates of Olympus await</p>
+          <h1 id="lobby-title">Claim your place<br />among the gods.</h1>
+          <p>Choose a mortal name, then raise a private table or answer a friend’s summons.</p>
         </div>
+
+        <form className="olympus-panel" onSubmit={(event) => { event.preventDefault(); lobbyMode === "create" ? createLobby() : joinLobby() }}>
+          <div className="olympus-panel__crest" aria-hidden="true"><span>VII</span></div>
+          <p className="olympus-panel__eyebrow">Player identity</p>
+          <h2>Choose your name</h2>
+          <p className="olympus-panel__lead">This is how your rivals will know you at the table.</p>
+
+          <label className="field-label" htmlFor="username">Display name</label>
+          <div className="name-field">
+            <input
+              id="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              maxLength={64}
+              autoComplete="nickname"
+              placeholder="e.g. Golden Oracle"
+              aria-invalid={usernameInvalid}
+              aria-describedby={usernameInvalid ? "username-error" : "username-help"}
+            />
+            <button type="button" onClick={generateUsername} aria-label="Generate a mythic name" title="Generate a mythic name">
+              <SparkIcon />
+            </button>
+          </div>
+          {usernameInvalid
+            ? <p id="username-error" className="field-message field-message--error" role="alert">Use 2–64 letters, numbers, spaces, hyphens, or underscores.</p>
+            : <p id="username-help" className="field-message">Need inspiration? Let fate choose with the star button.</p>}
+
+          <fieldset className="lobby-choice">
+            <legend>How will you enter?</legend>
+            <div className="lobby-choice__tabs">
+              <button type="button" className={lobbyMode === "create" ? "is-active" : ""} onClick={() => { setLobbyMode("create"); setError(null) }} aria-pressed={lobbyMode === "create"}>
+                Create lobby
+              </button>
+              <button type="button" className={lobbyMode === "join" ? "is-active" : ""} onClick={() => { setLobbyMode("join"); setError(null) }} aria-pressed={lobbyMode === "join"}>
+                Join by code
+              </button>
+            </div>
+          </fieldset>
+
+          {lobbyMode === "join" && <div className="room-code-field">
+            <label className="field-label" htmlFor="room-code">Room code</label>
+            <input id="room-code" value={roomCode} onChange={(event) => setRoomCode(event.target.value.toUpperCase())} maxLength={24} autoCapitalize="characters" spellCheck={false} placeholder="OLY-XXXXXX" />
+          </div>}
+
+          <button type="submit" className="olympus-cta" disabled={isSubmitting || status.status !== "ready" || !validUsername(username) || (lobbyMode === "join" && roomCode.trim().length === 0)}>
+            <span>{isSubmitting ? "Calling the gods…" : lobbyMode === "create" ? "Create private lobby" : "Enter the lobby"}</span>
+            {!isSubmitting && <ChevronIcon />}
+          </button>
+          <p className="olympus-panel__note">{lobbyMode === "create" ? "You’ll receive a code to share with up to three rivals." : "Enter the exact code shared by your host."}</p>
+          {error && <p className="entry-error" role="alert">{error}</p>}
+        </form>
       </section>
     </main>
   )
 }
 
-type CardRevealEvent = Extract<GameSnapshot["events"][number], { readonly type: "CARD_REVEALED" }>
-type GodRevealEvent = CardRevealEvent & { readonly card: Extract<CardRevealEvent["card"], { readonly kind: "god" }> }
-
-function isGodRevealEvent(event: GameSnapshot["events"][number]): event is GodRevealEvent {
-  return event.type === "CARD_REVEALED" && event.card.kind === "god"
-}
-
-function GodRevealOverlay({ god, playerName, onDismiss }: { readonly god: string; readonly playerName: string; readonly onDismiss: () => void }) {
-  const card = godCardDefinition(god)
-  const reducedMotion = useReducedMotion()
-  const revealTransition = { duration: reducedMotion ? 0 : 0.65, ease: [0.22, 1, 0.36, 1] as const }
-  return <motion.div className="god-reveal" role="dialog" aria-modal="true" aria-label={`${card.deityName} revealed`} onClick={onDismiss} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: reducedMotion ? 0 : 0.3 }}>
-    <motion.p className="god-reveal__eyebrow" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.2 }}>{playerName} invoked</motion.p>
-    <div className="god-reveal__cards" aria-hidden="true">
-      <motion.div className="god-reveal__back" initial={{ opacity: 1, rotateY: 0, scale: 0.86 }} animate={reducedMotion ? { opacity: 0 } : { opacity: [1, 1, 0], rotateY: [0, 0, 90], scale: [0.86, 1, 1] }} transition={{ duration: reducedMotion ? 0 : 1.1, times: [0, 0.35, 1], ease: [0.22, 1, 0.36, 1] }}><GameCard card={card} face="back" size="preview" /></motion.div>
-      <motion.div className="god-reveal__front" initial={{ opacity: 0, rotateY: reducedMotion ? 0 : -90, scale: reducedMotion ? 1 : 0.86 }} animate={{ opacity: 1, rotateY: 0, scale: 1 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.42 }}><GameCard card={card} size="preview" /></motion.div>
+function TitleScreen({ status, onEnter }: { readonly status: ServerStatus; readonly onEnter: () => void }) {
+  return <main className="title-screen text-parchment">
+    <div className="title-screen__shade" />
+    <h1 className="sr-only">Favour of Olympus</h1>
+    <div className="title-screen__status"><ConnectionStatus status={status} compact /></div>
+    <div className="title-screen__action">
+      <p>Outwit your rivals. Win the gods’ favour.</p>
+      <button type="button" onClick={onEnter}>
+        <span>Enter Olympus</span>
+        <ChevronIcon />
+      </button>
+      <small>3–4 players · Online multiplayer</small>
     </div>
-    <motion.h2 initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.8 }}>{card.deityName}</motion.h2>
-    <motion.p className="god-reveal__effect" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 0.9 }}>{card.effectName}</motion.p>
-    <motion.button type="button" onClick={onDismiss} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...revealTransition, delay: reducedMotion ? 0 : 1 }}>Continue</motion.button>
-  </motion.div>
+  </main>
 }
 
-type PendingChoice = Exclude<GameSnapshot["state"]["pendingChoice"], null>
-type ChoiceCard = { readonly id: string; readonly kind: "number" | "modifier" | "god"; readonly value?: number; readonly operation?: "add" | "multiply" }
-
-function GodChoicePanel({ choice, players, onSubmit }: { readonly choice: PendingChoice; readonly players: readonly GameSnapshot["state"]["players"][number][]; readonly onSubmit: (choiceId: string, selection: unknown) => void }) {
-  switch (choice.kind) {
-    case "choosePlayers":
-      return <PlayerChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "choosePlayerNumber":
-      return <NumberChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "chooseHermesExchange":
-      return <HermesChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "chooseDiscardNumber":
-    case "chooseDiscardModifier":
-      return <DiscardChoice choice={choice} players={players} onSubmit={onSubmit} />
-    case "reorderDeckTop":
-      return <DeckOrderChoice choice={choice} onSubmit={onSubmit} />
-  }
+function ConnectionStatus({ status, compact = false }: { readonly status: ServerStatus; readonly compact?: boolean }) {
+  const label = status.status === "ready" ? "Connected" : status.status === "connecting" ? "Connecting" : "Disconnected"
+  return <div className={`connection-status ${compact ? "connection-status--compact" : ""}`} role="status" aria-live="polite">
+    <span className={statusDotClassNames[status.status]} />
+    <span>{label}</span>
+  </div>
 }
 
-function PlayerChoice({ choice, players, onSubmit }: { readonly choice: Extract<PendingChoice, { readonly kind: "choosePlayers" }>; readonly players: readonly GameSnapshot["state"]["players"][number][]; readonly onSubmit: (choiceId: string, selection: unknown) => void }) {
-  const [selected, setSelected] = useState<readonly string[]>([])
-  useEffect(() => setSelected([]), [choice.id])
-  const eligible = players.filter((player) => choice.eligiblePlayerIds.includes(player.id))
-  const toggle = (id: string) => setSelected((current) => current.includes(id)
-    ? current.filter((candidate) => candidate !== id)
-    : current.length < choice.max ? [...current, id] : current)
-  return <div className="god-choice"><p>{choice.god} needs {choice.min === choice.max ? `${choice.min} player${choice.min === 1 ? "" : "s"}` : `${choice.min}–${choice.max} players`}.</p><div className="god-choice__options">{eligible.map((player) => <button key={player.id} type="button" data-selected={selected.includes(player.id) || undefined} onClick={() => toggle(player.id)}>{player.name}</button>)}</div><button type="button" className="god-choice__confirm" disabled={selected.length < choice.min || selected.length > choice.max} onClick={() => onSubmit(choice.id, selected)}>Confirm</button></div>
+function BackIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
 }
 
-function NumberChoice({ choice, players, onSubmit }: { readonly choice: Extract<PendingChoice, { readonly kind: "choosePlayerNumber" }>; readonly players: readonly GameSnapshot["state"]["players"][number][]; readonly onSubmit: (choiceId: string, selection: unknown) => void }) {
-  const options = choice.eligible.flatMap((entry) => {
-    const player = players.find((candidate) => candidate.id === entry.playerId)
-    return entry.instanceIds.flatMap((instanceId) => {
-      const card = player?.numberCards.find((candidate) => candidate.instanceId === instanceId)
-      return card === undefined || player === undefined ? [] : [{ player, instanceId, value: card.value }]
-    })
-  })
-  return <div className="god-choice"><p>{choice.god} lets you choose a number card.</p><div className="god-choice__options">{options.map((option) => <button key={option.instanceId} type="button" onClick={() => onSubmit(choice.id, { playerId: option.player.id, instanceId: option.instanceId })}>{option.player.name}: {option.value}</button>)}</div></div>
+function SparkIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5 14 9l6.5 2-6.5 2-2 6.5-2-6.5-6.5-2L10 9l2-6.5Z" /><path d="m18.5 16 .75 2.25L21.5 19l-2.25.75L18.5 22l-.75-2.25L15.5 19l2.25-.75L18.5 16Z" /></svg>
 }
 
-function HermesChoice({ choice, players, onSubmit }: { readonly choice: Extract<PendingChoice, { readonly kind: "chooseHermesExchange" }>; readonly players: readonly GameSnapshot["state"]["players"][number][]; readonly onSubmit: (choiceId: string, selection: unknown) => void }) {
-  const [selected, setSelected] = useState<readonly { readonly playerId: string; readonly instanceId: string }[]>([])
-  useEffect(() => setSelected([]), [choice.id])
-  const options = choice.eligible.flatMap((entry) => {
-    const player = players.find((candidate) => candidate.id === entry.playerId)
-    return entry.instanceIds.flatMap((instanceId) => {
-      const card = player?.numberCards.find((candidate) => candidate.instanceId === instanceId)
-      return card === undefined || player === undefined ? [] : [{ player, instanceId, value: card.value }]
-    })
-  })
-  const choose = (playerId: string, instanceId: string) => setSelected((current) => {
-    const exists = current.some((card) => card.instanceId === instanceId)
-    if (exists) return current.filter((card) => card.instanceId !== instanceId)
-    if (current.length === 1 && current[0]?.playerId === playerId) return current
-    return current.length < 2 ? [...current, { playerId, instanceId }] : current
-  })
-  return <div className="god-choice"><p>Choose one number card from each of two players.</p><div className="god-choice__options">{options.map((option) => <button key={option.instanceId} type="button" data-selected={selected.some((card) => card.instanceId === option.instanceId) || undefined} onClick={() => choose(option.player.id, option.instanceId)}>{option.player.name}: {option.value}</button>)}</div><button type="button" className="god-choice__confirm" disabled={selected.length !== 2} onClick={() => onSubmit(choice.id, { left: selected[0], right: selected[1] })}>Exchange cards</button></div>
-}
-
-function DiscardChoice({ choice, players, onSubmit }: { readonly choice: Extract<PendingChoice, { readonly kind: "chooseDiscardNumber" | "chooseDiscardModifier" }>; readonly players: readonly GameSnapshot["state"]["players"][number][]; readonly onSubmit: (choiceId: string, selection: unknown) => void }) {
-  const [cardId, setCardId] = useState<string | null>(null)
-  const [targetId, setTargetId] = useState<string | null>(null)
-  useEffect(() => { setCardId(null); setTargetId(null) }, [choice.id])
-  const cards = (choice.cards ?? []) as readonly ChoiceCard[]
-  const targets = players.filter((player) => choice.eligiblePlayerIds.includes(player.id))
-  const label = choice.kind === "chooseDiscardNumber" ? "number" : "modifier"
-  return <div className="god-choice"><p>Choose a discarded {label} and its recipient.</p><div className="god-choice__options">{cards.map((card) => <button key={card.id} type="button" data-selected={card.id === cardId || undefined} onClick={() => setCardId(card.id)}>{choiceCardLabel(card)}</button>)}</div><div className="god-choice__options">{targets.map((player) => <button key={player.id} type="button" data-selected={player.id === targetId || undefined} onClick={() => setTargetId(player.id)}>{player.name}</button>)}</div><button type="button" className="god-choice__confirm" disabled={cardId === null || targetId === null} onClick={() => onSubmit(choice.id, { physicalCardId: cardId, targetId })}>Confirm</button></div>
-}
-
-function DeckOrderChoice({ choice, onSubmit }: { readonly choice: Extract<PendingChoice, { readonly kind: "reorderDeckTop" }>; readonly onSubmit: (choiceId: string, selection: unknown) => void }) {
-  const [order, setOrder] = useState<readonly string[]>(choice.physicalCardIds ?? [])
-  useEffect(() => setOrder(choice.physicalCardIds ?? []), [choice.id, choice.physicalCardIds])
-  const cardsById = new Map(((choice.cards ?? []) as readonly ChoiceCard[]).map((card) => [card.id, card]))
-  const move = (index: number, direction: -1 | 1) => setOrder((current) => {
-    const destination = index + direction
-    if (destination < 0 || destination >= current.length) return current
-    const next = [...current]
-    const currentCard = next[index]
-    const destinationCard = next[destination]
-    if (currentCard === undefined || destinationCard === undefined) return current
-    next[index] = destinationCard
-    next[destination] = currentCard
-    return next
-  })
-  return <div className="god-choice"><p>Arrange the next cards in draw order.</p><div className="god-choice__order">{order.map((id, index) => <div key={id}><span>{index + 1}. {choiceCardLabel(cardsById.get(id))}</span><button type="button" onClick={() => move(index, -1)} aria-label="Move earlier">↑</button><button type="button" onClick={() => move(index, 1)} aria-label="Move later">↓</button></div>)}</div><button type="button" className="god-choice__confirm" onClick={() => onSubmit(choice.id, order)}>Set order</button></div>
-}
-
-function choiceCardLabel(card: ChoiceCard | undefined): string {
-  if (card === undefined) return "Unknown card"
-  if (card.kind === "number") return `Number ${card.value ?? ""}`
-  if (card.kind === "modifier") return card.operation === "multiply" ? "Double modifier" : `+${card.value ?? ""} modifier`
-  return "God card"
+function ChevronIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
 }
 
 function Lobby({ snapshot, roomCode, isHost, canStart, error, onStart, onEnd }: { readonly snapshot: GameSnapshot; readonly roomCode: string; readonly isHost: boolean; readonly canStart: boolean; readonly error: string | null; readonly onStart: () => void; readonly onEnd: () => void }) {
