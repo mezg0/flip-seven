@@ -6,6 +6,7 @@
     "build": "tsup src/main.ts --format esm --clean",
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
@@ -18,6 +19,7 @@
     "@types/node": "latest",
     "tsx": "latest",
     "tsup": "latest",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
