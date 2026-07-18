@@ -32,17 +32,18 @@ const StayCommand = Schema.Struct({
   ...RevisionedActorCommandFields,
 })
 
-const SelectActionTargetCommand = Schema.Struct({
-  type: Schema.Literal("SELECT_ACTION_TARGET"),
+const SubmitChoiceCommand = Schema.Struct({
+  type: Schema.Literal("SUBMIT_CHOICE"),
   ...RevisionedActorCommandFields,
-  targetId: PlayerId,
+  choiceId: Schema.NonEmptyString.pipe(Schema.maxLength(128)),
+  selection: Schema.Unknown,
 })
 
 export const GameCommand = Schema.Union(
   StartGameCommand,
   HitCommand,
   StayCommand,
-  SelectActionTargetCommand,
+  SubmitChoiceCommand,
 )
 
 export type GameCommand = typeof GameCommand.Type

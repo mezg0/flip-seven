@@ -19,8 +19,10 @@ import { Server } from "socket.io"
 import {
   GameRegistry,
   RegistryError,
+  type AccessedGame,
   type ClaimedGame,
   type CreatedGame,
+  type SubmittedGame,
 } from "./game-registry.js"
 
 const port = Number(process.env.PORT ?? 3000)
@@ -35,8 +37,10 @@ const program = Effect.gen(function*() {
       const io = new Server<ClientToServerEvents, ServerToClientEvents>(httpServer, {
         cors: { origin: clientOrigin },
       })
+      const socketPlayers = new Map<string, Map<string, string>>()
 
       io.on("connection", (socket) => {
+        socketPlayers.set(socket.id, new Map())
         socket.on("system:status", (acknowledge) => {
           acknowledge({ status: "ready" })
         })
@@ -48,6 +52,7 @@ const program = Effect.gen(function*() {
             ),
             (error) => acknowledge(failure(error)),
             (created) => {
+              bindSocketPlayer(socketPlayers, socket.id, created.snapshot.state.id, created.credential.playerId)
               void socket.join(created.snapshot.state.id)
               acknowledge(gameCreated(created))
             },
@@ -79,6 +84,7 @@ const program = Effect.gen(function*() {
             ),
             (error) => acknowledge(failure(error)),
             (claimed) => {
+              bindSocketPlayer(socketPlayers, socket.id, claimed.snapshot.state.id, claimed.credential.playerId)
               void socket.join(claimed.snapshot.state.id)
               acknowledge(gameClaimed(claimed))
             },
@@ -91,9 +97,10 @@ const program = Effect.gen(function*() {
               Effect.flatMap((request) => games.get(request.gameId, request.accessToken)),
             ),
             (error) => acknowledge(failure(error)),
-            (snapshot) => {
-              void socket.join(snapshot.state.id)
-              acknowledge({ ok: true, snapshot })
+            (accessed) => {
+              bindSocketPlayer(socketPlayers, socket.id, accessed.snapshot.state.id, accessed.playerId)
+              void socket.join(accessed.snapshot.state.id)
+              acknowledge(gameAccessed(accessed))
             },
           )
         })
@@ -119,11 +126,15 @@ const program = Effect.gen(function*() {
               Effect.flatMap((request) => games.submit(request.gameId, request.accessToken, request.command)),
             ),
             (error) => acknowledge(failure(error)),
-            (snapshot) => {
-              io.to(snapshot.state.id).emit("game:snapshot", snapshot)
-              acknowledge({ ok: true, snapshot })
+            (submitted) => {
+              broadcastSubmittedGame(io, socketPlayers, submitted)
+              acknowledge({ ok: true, snapshot: submitted.snapshot })
             },
           )
+        })
+
+        socket.on("disconnect", () => {
+          socketPlayers.delete(socket.id)
         })
       })
 
@@ -168,6 +179,36 @@ function gameCreated(created: CreatedGame): GameCreateResponse {
 
 function gameClaimed(claimed: ClaimedGame): GameClaimResponse {
   return { ok: true, snapshot: claimed.snapshot, credential: claimed.credential }
+}
+
+function gameAccessed(accessed: AccessedGame): GameResponse {
+  return { ok: true, snapshot: accessed.snapshot }
+}
+
+function bindSocketPlayer(
+  socketPlayers: Map<string, Map<string, string>>,
+  socketId: string,
+  gameId: string,
+  playerId: string,
+): void {
+  socketPlayers.get(socketId)?.set(gameId, playerId)
+}
+
+function broadcastSubmittedGame(
+  io: Server<ClientToServerEvents, ServerToClientEvents>,
+  socketPlayers: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  submitted: SubmittedGame,
+): void {
+  const gameId = submitted.publicSnapshot.state.id
+  for (const socketId of io.sockets.adapter.rooms.get(gameId) ?? []) {
+    const playerId = socketPlayers.get(socketId)?.get(gameId)
+    const recipient = io.sockets.sockets.get(socketId)
+    if (playerId === undefined || recipient === undefined) continue
+    const snapshot = playerId === submitted.privateSnapshot?.playerId
+      ? submitted.privateSnapshot.snapshot
+      : submitted.publicSnapshot
+    recipient.emit("game:snapshot", snapshot)
+  }
 }
 
 function failure(error: unknown): Extract<GameResponse, { readonly ok: false }> {

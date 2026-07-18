@@ -37,6 +37,17 @@ export interface ClaimedGame {
   readonly credential: PlayerCredential
 }
 
+export interface AccessedGame {
+  readonly playerId: string
+  readonly snapshot: GameSnapshot
+}
+
+export interface SubmittedGame {
+  readonly snapshot: GameSnapshot
+  readonly publicSnapshot: GameSnapshot
+  readonly privateSnapshot: { readonly playerId: string; readonly snapshot: GameSnapshot } | null
+}
+
 interface RegisteredGame {
   readonly state: GameState
   readonly playersByAccessToken: ReadonlyMap<string, string>
@@ -104,7 +115,7 @@ export class GameRegistry {
           const nextGames = new Map(games)
           nextGames.set(gameId, registered)
           return [{
-            snapshot: snapshot(state, []),
+            snapshot: snapshot(state, [], creatorId),
             credential: initialAccess.credential,
             invitations: initialAccess.invitations,
           }, nextGames] as const
@@ -177,22 +188,23 @@ export class GameRegistry {
       const nextGames = new Map(games)
       nextGames.set(gameId, { ...game, playersByAccessToken, playersByInvitationToken })
       return Effect.succeed([{
-        snapshot: snapshot(game.state, []),
+        snapshot: snapshot(game.state, [], playerId),
         credential: { playerId, accessToken },
       }, nextGames] as const)
     })
   }
 
-  get(gameId: string, accessToken: string): Effect.Effect<GameSnapshot, RegistryError> {
+  get(gameId: string, accessToken: string): Effect.Effect<AccessedGame, RegistryError> {
     return SynchronizedRef.get(this.#games).pipe(
       Effect.flatMap((games) => {
         const game = games.get(gameId)
         if (game === undefined) {
           return Effect.fail(gameNotFound(gameId))
         }
-        return game.playersByAccessToken.has(accessToken)
-          ? Effect.succeed(snapshot(game.state, []))
-          : Effect.fail(unauthorized())
+        const playerId = game.playersByAccessToken.get(accessToken)
+        return playerId === undefined
+          ? Effect.fail(unauthorized())
+          : Effect.succeed({ playerId, snapshot: snapshot(game.state, [], playerId) })
       }),
     )
   }
@@ -216,10 +228,10 @@ export class GameRegistry {
     gameId: string,
     accessToken: string,
     command: GameCommand,
-  ): Effect.Effect<GameSnapshot, RegistryError | GameRuleError> {
+  ): Effect.Effect<SubmittedGame, RegistryError | GameRuleError> {
     return SynchronizedRef.modifyEffect<
       ReadonlyMap<string, RegisteredGame>,
-      GameSnapshot,
+      SubmittedGame,
       RegistryError | GameRuleError,
       never
     >(this.#games, (games) => {
@@ -236,7 +248,23 @@ export class GameRegistry {
         Effect.map((result) => {
           const nextGames = new Map(games)
           nextGames.set(gameId, { ...game, state: result.nextState })
-          return [snapshot(result.nextState, result.events), nextGames] as const
+          const publicSnapshot = snapshot(result.nextState, result.events)
+          const privateChoice = result.nextState.pendingChoice?.kind === "reorderDeckTop"
+            ? result.nextState.pendingChoice
+            : null
+          const privateSnapshot = privateChoice === null
+            ? null
+            : {
+              playerId: privateChoice.controllerId,
+              snapshot: snapshot(result.nextState, result.events, privateChoice.controllerId),
+            }
+          return [{
+            snapshot: authenticatedPlayerId === privateSnapshot?.playerId
+              ? privateSnapshot.snapshot
+              : publicSnapshot,
+            publicSnapshot,
+            privateSnapshot,
+          }, nextGames] as const
         }),
       )
     })
@@ -296,6 +324,6 @@ function attemptGameOperation<Result>(operation: () => Result): Effect.Effect<Re
   })
 }
 
-function snapshot(state: GameState, events: readonly GameEvent[]): GameSnapshot {
-  return { state: toPublicGameState(state), events }
+function snapshot(state: GameState, events: readonly GameEvent[], viewerId?: string): GameSnapshot {
+  return { state: toPublicGameState(state, viewerId), events }
 }

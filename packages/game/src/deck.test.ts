@@ -1,20 +1,19 @@
 import { describe, expect, it } from "vitest"
+import { GOD_KINDS } from "./model.js"
 import { createDeck, createUnshuffledDeck } from "./deck.js"
 
-describe("Flip Seven deck", () => {
-  it("contains all 94 uniquely identified cards in the required distribution", () => {
+describe("Greek-god variant deck", () => {
+  it("contains 97 uniquely identified physical cards", () => {
     const deck = createUnshuffledDeck("test")
 
-    expect(deck).toHaveLength(94)
-    expect(new Set(deck.map((card) => card.id))).toHaveLength(94)
-    for (let value = 0; value <= 12; value += 1) {
-      const expected = value === 0 ? 1 : value
-      expect(deck.filter((card) => card.kind === "number" && card.value === value)).toHaveLength(expected)
-    }
-    for (const action of ["freeze", "flipThree", "secondChance"] as const) {
-      expect(deck.filter((card) => card.kind === "action" && card.action === action)).toHaveLength(3)
-    }
+    expect(deck).toHaveLength(97)
+    expect(new Set(deck.map((card) => card.id))).toHaveLength(97)
+    expect(deck.filter((card) => card.kind === "number")).toHaveLength(79)
     expect(deck.filter((card) => card.kind === "modifier")).toHaveLength(6)
+    expect(deck.filter((card) => card.kind === "god")).toHaveLength(12)
+    for (const god of GOD_KINDS) {
+      expect(deck.filter((card) => card.kind === "god" && card.god === god)).toHaveLength(1)
+    }
   })
 
   it("shuffles deterministically from a seed", () => {

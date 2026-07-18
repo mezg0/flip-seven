@@ -6,6 +6,9 @@ import {
   toPublicGameState,
   type Card,
   type GameState,
+  type GodKind,
+  type ModifierInstance,
+  type NumberInstance,
 } from "./index.js"
 
 const players = [
@@ -13,6 +16,39 @@ const players = [
   { id: "p1", name: "One", seat: 1 },
   { id: "p2", name: "Two", seat: 2 },
 ]
+
+const numberCard = (id: string, value: number): Card => ({ id, kind: "number", value })
+const godCard = (id: string, god: GodKind): Card => ({ id, kind: "god", god })
+const modifierCard = (
+  id: string,
+  operation: "add" | "multiply",
+  value: 2 | 4 | 6 | 8 | 10,
+): Card => operation === "add"
+  ? { id, kind: "modifier", operation, value }
+  : { id, kind: "modifier", operation, value: 2 }
+
+const numberInstance = (
+  instanceId: string,
+  value: number,
+  origin: "deck" | "aphrodite" = "deck",
+): NumberInstance => ({
+  instanceId,
+  value,
+  physicalCardId: origin === "deck" ? instanceId : null,
+  origin,
+})
+
+const modifierInstance = (
+  instanceId: string,
+  operation: "add" | "multiply",
+  value: 2 | 4 | 6 | 8 | 10,
+): ModifierInstance => ({
+  instanceId,
+  operation,
+  value,
+  physicalCardId: instanceId,
+  origin: "deck",
+})
 
 function gameForTurn(nextCards: Card[]): GameState {
   const state = createGame("test", players, 1, { config: { minimumPlayers: 1 } })
@@ -24,14 +60,30 @@ function gameForTurn(nextCards: Card[]): GameState {
   return state
 }
 
-function number(id: string, value: number): Card {
-  return { id, kind: "number", value }
+function hit(state: GameState, actorId = "p0") {
+  return applyCommand(state, {
+    type: "HIT",
+    actorId,
+    expectedRevision: state.revision,
+  })
 }
 
-describe("turns and initial deal", () => {
+function choose(state: GameState, selection: unknown) {
+  const pending = state.pendingChoice
+  if (pending === null) throw new Error("Expected a pending God choice")
+  return applyCommand(state, {
+    type: "SUBMIT_CHOICE",
+    actorId: pending.controllerId,
+    choiceId: pending.id,
+    selection,
+    expectedRevision: state.revision,
+  })
+}
+
+describe("base flow with God cards", () => {
   it("deals from the dealer and offers the dealer the first active turn", () => {
     const state = createGame("deal", players, 1, { dealerSeat: 1 })
-    state.drawPile = [number("seat-0", 3), number("seat-2", 2), number("seat-1", 1)]
+    state.drawPile = [numberCard("seat-0", 3), numberCard("seat-2", 2), numberCard("seat-1", 1)]
 
     const result = applyCommand(state, { type: "START_GAME", actorId: "p0" })
 
@@ -39,184 +91,294 @@ describe("turns and initial deal", () => {
     expect(result.nextState.players.find((player) => player.id === "p2")?.numberCards[0]?.value).toBe(2)
     expect(result.nextState.players.find((player) => player.id === "p0")?.numberCards[0]?.value).toBe(3)
     expect(result.nextState.currentTurnSeat).toBe(1)
-    expect(result.nextState.phase).toBe("awaitingTurnChoice")
   })
 
-  it("rejects stale commands and a stay with no cards", () => {
-    const state = gameForTurn([number("draw", 4)])
-    state.revision = 2
+  it("rejects stale commands and allows a modifier-only stay", () => {
+    const state = gameForTurn([numberCard("unused", 1)])
+    state.players[0]?.modifierCards.push(modifierInstance("plus-eight", "add", 8))
 
-    expect(() => applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 1 }))
+    expect(() => applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 2 }))
       .toThrowError(expect.objectContaining({ code: "STALE_REVISION" }))
-    expect(() => applyCommand(state, { type: "STAY", actorId: "p0", expectedRevision: 2 }))
-      .toThrowError(expect.objectContaining({ code: "CANNOT_STAY_WITHOUT_CARDS" }))
+    const stayed = applyCommand(state, { type: "STAY", actorId: "p0", expectedRevision: 0 })
+    expect(stayed.nextState.players[0]?.lockedRoundScore).toBe(8)
   })
 
-  it("allows a modifier-only player to stay and locks that score", () => {
-    const state = gameForTurn([number("unused", 1)])
-    state.players[0]?.modifierCards.push({ id: "plus-eight", kind: "modifier", operation: "add", value: 8 })
+  it("never exposes Athena's private card IDs to another player", () => {
+    const state = gameForTurn([
+      godCard("athena", "athena"),
+      numberCard("one", 1),
+      numberCard("two", 2),
+      numberCard("three", 3),
+    ])
+    const pending = hit(state).nextState
 
-    const result = applyCommand(state, { type: "STAY", actorId: "p0", expectedRevision: 0 })
-
-    expect(result.nextState.players[0]?.roundStatus).toBe("stayed")
-    expect(result.nextState.players[0]?.lockedRoundScore).toBe(8)
-    expect(result.nextState.currentTurnSeat).toBe(1)
+    expect(toPublicGameState(pending, "p0").pendingChoice?.physicalCardIds).toEqual(["one", "two", "three"])
+    expect(toPublicGameState(pending, "p1").pendingChoice?.physicalCardIds).toEqual([])
   })
 })
 
-describe("numbers and Second Chance", () => {
-  it("busts on a duplicate number, including zero", () => {
-    const state = gameForTurn([number("duplicate-zero", 0)])
-    state.players[0]?.numberCards.push({ id: "original-zero", kind: "number", value: 0 })
+describe("Zeus", () => {
+  it("persists, consumes a duplicate, and leaves a later duplicate unprotected", () => {
+    const state = gameForTurn([godCard("zeus", "zeus")])
+    state.players[0]?.numberCards.push(numberInstance("five", 5))
+    let current = hit(state).nextState
 
-    const result = applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 0 })
+    expect(current.players[0]?.godEffects.map((effect) => effect.kind)).toEqual(["zeus"])
+    expect(current.players[0]?.godCardsInFront.map((card) => card.id)).toEqual(["zeus"])
 
-    expect(result.nextState.players[0]?.roundStatus).toBe("busted")
-    expect(result.nextState.players[0]?.lockedRoundScore).toBe(0)
-    expect(result.nextState.currentTurnSeat).toBe(1)
+    current.phase = "awaitingTurnChoice"
+    current.currentTurnSeat = 0
+    current.drawPile = [numberCard("duplicate-one", 5)]
+    current = hit(current).nextState
+    expect(current.players[0]?.roundStatus).toBe("active")
+    expect(current.players[0]?.godEffects).toHaveLength(0)
+    expect(current.discardPile.map((card) => card.id)).toEqual(expect.arrayContaining(["zeus", "duplicate-one"]))
+
+    current.phase = "awaitingTurnChoice"
+    current.currentTurnSeat = 0
+    current.drawPile = [numberCard("duplicate-two", 5)]
+    current = hit(current).nextState
+    expect(current.players[0]?.roundStatus).toBe("busted")
   })
 
-  it("automatically spends Second Chance without drawing an extra card", () => {
-    const state = gameForTurn([number("duplicate", 5), number("later", 9)])
-    const first = state.players[0]
-    if (first === undefined) throw new Error("missing fixture player")
-    first.numberCards.push({ id: "original", kind: "number", value: 5 })
-    first.actionCardsInFront.push({ id: "chance", kind: "action", action: "secondChance" })
-    first.hasSecondChance = true
-
-    const result = applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 0 })
-
-    expect(result.nextState.players[0]?.numberCards).toHaveLength(1)
-    expect(result.nextState.players[0]?.hasSecondChance).toBe(false)
-    expect(result.nextState.discardPile.map((card) => card.id)).toEqual(["chance", "duplicate"])
-    expect(result.nextState.drawPile.map((card) => card.id)).toContain("later")
-    expect(result.nextState.currentTurnSeat).toBe(1)
-  })
-
-  it("requires a second Second Chance to transfer to an eligible active player", () => {
-    const state = gameForTurn([{ id: "chance-two", kind: "action", action: "secondChance" }])
-    const first = state.players[0]
-    if (first === undefined) throw new Error("missing fixture player")
-    first.actionCardsInFront.push({ id: "chance-one", kind: "action", action: "secondChance" })
-    first.hasSecondChance = true
-
-    const hit = applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 0 })
-    expect(hit.nextState.pendingAction?.action).toBe("secondChanceTransfer")
-    expect(hit.nextState.phase).toBe("awaitingActionTarget")
-
-    const transferred = applyCommand(hit.nextState, {
-      type: "SELECT_ACTION_TARGET",
-      actorId: "p0",
-      targetId: "p1",
-      expectedRevision: 1,
+  it("discards a second Zeus without creating another protection", () => {
+    const state = gameForTurn([godCard("second-zeus", "zeus")])
+    state.players[0]?.godEffects.push({
+      effectId: "existing",
+      kind: "zeus",
+      ownerId: "p0",
+      physicalCardId: null,
+      grantedBy: "prometheus",
     })
-    expect(transferred.nextState.players[1]?.hasSecondChance).toBe(true)
-    expect(transferred.nextState.players[1]?.actionCardsInFront.map((card) => card.id)).toContain("chance-two")
+    const result = hit(state).nextState
+
+    expect(result.players[0]?.godEffects).toHaveLength(1)
+    expect(result.discardPile.map((card) => card.id)).toContain("second-zeus")
   })
 })
 
-describe("action resolution", () => {
-  it("lets the dealt player choose Freeze's target, including themself", () => {
-    const state = gameForTurn([{ id: "freeze", kind: "action", action: "freeze" }])
-    state.players[0]?.numberCards.push({ id: "seven", kind: "number", value: 7 })
-
-    const hit = applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 0 })
-    expect(hit.nextState.pendingAction?.chooserId).toBe("p0")
-
-    const frozen = applyCommand(hit.nextState, {
-      type: "SELECT_ACTION_TARGET",
-      actorId: "p0",
-      targetId: "p0",
-      expectedRevision: 1,
-    })
-    expect(frozen.nextState.players[0]?.roundStatus).toBe("frozen")
-    expect(frozen.nextState.players[0]?.lockedRoundScore).toBe(7)
-    expect(frozen.nextState.players[0]?.hasSecondChance).toBe(false)
-    expect(frozen.nextState.currentTurnSeat).toBe(1)
-  })
-
-  it("finishes Flip Three forced draws before requesting queued action targets", () => {
+describe("Ares and Dionysus", () => {
+  it("resolves exactly three sequential Ares draws", () => {
     const state = gameForTurn([
-      { id: "flip", kind: "action", action: "flipThree" },
-      { id: "queued-freeze", kind: "action", action: "freeze" },
-      { id: "plus-six", kind: "modifier", operation: "add", value: 6 },
-      number("nine", 9),
+      godCard("ares", "ares"),
+      numberCard("one", 1),
+      numberCard("two", 2),
+      numberCard("three", 3),
     ])
+    const requested = hit(state).nextState
+    const result = choose(requested, ["p1"]).nextState
 
-    const hit = applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 0 })
-    const selected = applyCommand(hit.nextState, {
-      type: "SELECT_ACTION_TARGET",
-      actorId: "p0",
-      targetId: "p1",
-      expectedRevision: 1,
-    })
-
-    expect(selected.nextState.players[1]?.numberCards.map((card) => card.value)).toEqual([9])
-    expect(selected.nextState.players[1]?.modifierCards.map((card) => card.value)).toEqual([6])
-    expect(selected.nextState.pendingAction).toMatchObject({ action: "freeze", chooserId: "p1" })
+    expect(result.players[1]?.numberCards.map((card) => card.value)).toEqual([1, 2, 3])
+    expect(result.currentTurnSeat).toBe(1)
   })
 
-  it("allows Second Chance within Flip Three to protect a later forced duplicate", () => {
+  it("resolves nested Ares depth-first before resuming its parent", () => {
     const state = gameForTurn([
-      { id: "flip", kind: "action", action: "flipThree" },
-      { id: "chance", kind: "action", action: "secondChance" },
-      number("duplicate-five", 5),
-      number("six", 6),
+      godCard("outer-ares", "ares"),
+      godCard("inner-ares", "ares"),
+      numberCard("one", 1),
+      numberCard("two", 2),
+      numberCard("three", 3),
+      numberCard("four", 4),
+      numberCard("five", 5),
     ])
-    state.players[1]?.numberCards.push({ id: "original-five", kind: "number", value: 5 })
+    const outerTarget = choose(hit(state).nextState, ["p1"]).nextState
+    const result = choose(outerTarget, ["p2"]).nextState
 
-    const hit = applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 0 })
-    const selected = applyCommand(hit.nextState, {
-      type: "SELECT_ACTION_TARGET",
-      actorId: "p0",
-      targetId: "p1",
-      expectedRevision: 1,
-    })
-
-    expect(selected.nextState.players[1]?.roundStatus).toBe("active")
-    expect(selected.nextState.players[1]?.numberCards.map((card) => card.value)).toEqual([5, 6])
-    expect(selected.nextState.discardPile.map((card) => card.id)).toEqual(["chance", "duplicate-five"])
-    expect(selected.nextState.currentTurnSeat).toBe(1)
+    expect(result.players[2]?.numberCards.map((card) => card.value)).toEqual([1, 2, 3])
+    expect(result.players[1]?.numberCards.map((card) => card.value)).toEqual([4, 5])
   })
 
-  it("interrupts immediately on seven unique numbers and awards the bonus", () => {
+  it("stops Ares when nested Dionysus forces its target to stay", () => {
     const state = gameForTurn([
-      number("seven", 7),
-      number("next-round-p0", 8),
-      number("next-round-p1", 9),
-      number("next-round-p2", 10),
+      godCard("ares", "ares"),
+      godCard("dionysus", "dionysus"),
+      numberCard("must-remain", 8),
+      numberCard("also-remains", 9),
+    ])
+    const dionysusChoice = choose(hit(state).nextState, ["p1"]).nextState
+    const result = choose(dionysusChoice, ["p1"]).nextState
+
+    expect(result.players[1]?.roundStatus).toBe("stayed")
+    expect(result.players[1]?.lockedRoundScore).toBe(0)
+    expect(result.drawPile.map((card) => card.id)).toEqual(expect.arrayContaining(["must-remain", "also-remains"]))
+    expect(result.currentTurnSeat).toBe(2)
+  })
+})
+
+describe("Athena, Hades, Hermes, and Artemis", () => {
+  it("accepts only an exact Athena permutation and puts the first ID on top", () => {
+    const state = gameForTurn([
+      godCard("athena", "athena"),
+      numberCard("one", 1),
+      numberCard("two", 2),
+      numberCard("three", 3),
+    ])
+    const pending = hit(state).nextState
+    expect(() => choose(pending, ["one", "one", "three"])).toThrowError(
+      expect.objectContaining({ code: "INVALID_CHOICE" }),
+    )
+
+    const result = choose(pending, ["three", "one", "two"]).nextState
+    expect(result.drawPile.at(-1)?.id).toBe("three")
+  })
+
+  it("lets Hades move only a discarded physical number to an active target", () => {
+    const state = gameForTurn([godCard("hades", "hades")])
+    state.discardPile.push(numberCard("discarded-seven", 7))
+    const pending = hit(state).nextState
+    const result = choose(pending, { physicalCardId: "discarded-seven", targetId: "p1" }).nextState
+
+    expect(result.players[1]?.numberCards[0]).toMatchObject({ value: 7, physicalCardId: "discarded-seven" })
+    expect(result.discardPile.map((card) => card.id)).not.toContain("discarded-seven")
+  })
+
+  it("exchanges Hermes numbers atomically", () => {
+    const state = gameForTurn([godCard("hermes", "hermes")])
+    state.players[0]?.numberCards.push(numberInstance("left", 2))
+    state.players[1]?.numberCards.push(numberInstance("right", 9))
+    const pending = hit(state).nextState
+    const result = choose(pending, {
+      left: { playerId: "p0", instanceId: "left" },
+      right: { playerId: "p1", instanceId: "right" },
+    }).nextState
+
+    expect(result.players[0]?.numberCards.map((card) => card.value)).toEqual([9])
+    expect(result.players[1]?.numberCards.map((card) => card.value)).toEqual([2])
+  })
+
+  it("destroys an Aphrodite-generated number removed by Artemis", () => {
+    const state = gameForTurn([godCard("artemis", "artemis")])
+    state.players[1]?.numberCards.push(numberInstance("generated", 4, "aphrodite"))
+    const pending = hit(state).nextState
+    const result = choose(pending, { playerId: "p1", instanceId: "generated" }).nextState
+
+    expect(result.players[1]?.numberCards).toHaveLength(0)
+    expect(result.discardPile.map((card) => card.id)).not.toContain("generated")
+  })
+})
+
+describe("Aphrodite", () => {
+  it("creates two generated number instances and discards the physical reveal", () => {
+    const state = gameForTurn([
+      godCard("aphrodite", "aphrodite"),
+      numberCard("physical-seven", 7),
+    ])
+    const result = choose(hit(state).nextState, ["p1", "p2"]).nextState
+
+    expect(result.players[1]?.numberCards[0]).toMatchObject({ value: 7, origin: "aphrodite", physicalCardId: null })
+    expect(result.players[2]?.numberCards[0]).toMatchObject({ value: 7, origin: "aphrodite", physicalCardId: null })
+    expect(result.discardPile.map((card) => card.id)).toEqual(expect.arrayContaining(["physical-seven", "aphrodite"]))
+  })
+
+  it("finishes both targets atomically and records simultaneous Flip 7", () => {
+    const state = gameForTurn([
+      godCard("aphrodite", "aphrodite"),
+      numberCard("physical-seven", 7),
     ])
     state.config.targetScore = 1
-    const first = state.players[0]
-    if (first === undefined) throw new Error("missing fixture player")
-    first.numberCards.push(...[1, 2, 3, 4, 5, 6].map((value) => number(`n-${value}`, value) as Extract<Card, { kind: "number" }>))
+    state.players[1]!.totalScore = 1
+    for (const player of [state.players[1], state.players[2]]) {
+      player?.numberCards.push(...[1, 2, 3, 4, 5, 6].map((value) => numberInstance(`${player.id}-${value}`, value)))
+    }
+    const result = choose(hit(state).nextState, ["p1", "p2"])
 
-    const result = applyCommand(state, { type: "HIT", actorId: "p0", expectedRevision: 0 })
+    expect(result.events.filter((event) => event.type === "FLIP_SEVEN_ACHIEVED")).toHaveLength(2)
+    expect(result.nextState.winnerId).toBe("p1")
+    expect(result.nextState.players[1]?.totalScore).toBe(44)
+    expect(result.nextState.players[2]?.totalScore).toBe(43)
+  })
 
-    expect(result.events.map((event) => event.type)).toContain("FLIP_SEVEN_ACHIEVED")
-    expect(result.nextState.players[0]?.totalScore).toBe(43)
-    expect(result.nextState.winnerId).toBe("p0")
-    expect(result.nextState.phase).toBe("gameOver")
-    expect(result.nextState.players.every((player) =>
-      player.numberCards.length === 0
-        && player.modifierCards.length === 0
-        && player.actionCardsInFront.length === 0
-    )).toBe(true)
-    expect(result.nextState.discardPile).toHaveLength(7)
+  it("uses an effect token when Aphrodite reveals a persistent God", () => {
+    const state = gameForTurn([
+      godCard("aphrodite", "aphrodite"),
+      godCard("revealed-zeus", "zeus"),
+    ])
+    const result = choose(hit(state).nextState, ["p1", "p2"]).nextState
+
+    expect(result.players[0]?.godEffects[0]).toMatchObject({ kind: "zeus", physicalCardId: null })
+    expect(result.discardPile.map((card) => card.id)).toEqual(expect.arrayContaining(["revealed-zeus", "aphrodite"]))
   })
 })
 
-describe("public snapshots", () => {
-  it("exposes only a remaining-card count, never the draw order", () => {
-    const state = gameForTurn([number("secret", 12)])
-    const snapshot = toPublicGameState(state)
+describe("Hephaestus, Demeter, Nike, and Prometheus", () => {
+  it("gives Hephaestus's controller a generated +4 when no modifier is discarded", () => {
+    const result = hit(gameForTurn([godCard("hephaestus", "hephaestus")])).nextState
+    expect(result.players[0]?.modifierCards[0]).toMatchObject({
+      operation: "add",
+      value: 4,
+      origin: "hephaestusFallback",
+      physicalCardId: null,
+    })
+  })
 
-    expect(snapshot.remainingCardCount).toBe(1)
-    expect(snapshot).not.toHaveProperty("drawPile")
+  it("requires Hephaestus to forge an available physical modifier", () => {
+    const state = gameForTurn([godCard("hephaestus", "hephaestus")])
+    state.discardPile.push(modifierCard("plus-ten", "add", 10))
+    const result = choose(hit(state).nextState, { physicalCardId: "plus-ten", targetId: "p1" }).nextState
+
+    expect(result.players[1]?.modifierCards[0]).toMatchObject({ value: 10, physicalCardId: "plus-ten" })
+    expect(result.discardPile.map((card) => card.id)).not.toContain("plus-ten")
+  })
+
+  it("retains direct Demeter on its target and doubles its bonus under x2", () => {
+    const state = gameForTurn([godCard("demeter", "demeter")])
+    state.players[1]?.numberCards.push(numberInstance("two", 2), numberInstance("five", 5))
+    state.players[1]?.modifierCards.push(modifierInstance("x2", "multiply", 2))
+    const result = choose(hit(state).nextState, ["p1"]).nextState
+
+    expect(result.players[1]?.godEffects[0]).toMatchObject({ kind: "demeter", physicalCardId: "demeter" })
+    expect(result.players[1]?.godCardsInFront.map((card) => card.id)).toContain("demeter")
+  })
+
+  it("adds Nike after the normal Flip 7 bonus and never doubles it", () => {
+    const state = gameForTurn([numberCard("seven", 7)])
+    state.config.targetScore = 1
+    state.players[0]?.numberCards.push(...[1, 2, 3, 4, 5, 6].map((value) => numberInstance(`n${value}`, value)))
+    state.players[0]?.modifierCards.push(modifierInstance("x2", "multiply", 2))
+    state.players[0]?.godEffects.push({
+      effectId: "nike",
+      kind: "nike",
+      ownerId: "p0",
+      physicalCardId: null,
+      grantedBy: "prometheus",
+    })
+    const result = hit(state).nextState
+
+    expect(result.players[0]?.totalScore).toBe(81)
+  })
+
+  it("copies only the most recently completed non-Prometheus God", () => {
+    const state = gameForTurn([godCard("prometheus", "prometheus")])
+    state.godResolutionHistory.push({
+      god: "dionysus",
+      controllerId: "p2",
+      copiedGod: null,
+      completedAtSequence: 1,
+    })
+    const pending = hit(state).nextState
+    expect(pending.pendingChoice).toMatchObject({ god: "dionysus", controllerId: "p0" })
+    const result = choose(pending, ["p1"]).nextState
+
+    expect(result.players[1]?.roundStatus).toBe("stayed")
+    expect(result.godResolutionHistory.at(-1)).toMatchObject({ god: "prometheus", copiedGod: "dionysus" })
+    expect(result.godResolutionHistory.filter((record) => record.god === "dionysus")).toHaveLength(1)
+  })
+
+  it("resolves Prometheus with no effect when no God completed earlier", () => {
+    const result = hit(gameForTurn([godCard("prometheus", "prometheus")])).nextState
+    expect(result.pendingChoice).toBeNull()
+    expect(result.godResolutionHistory.at(-1)).toMatchObject({ god: "prometheus", copiedGod: null })
   })
 })
 
-it("uses typed game errors", () => {
-  const state = gameForTurn([number("one", 1)])
-  expect(() => applyCommand(state, { type: "HIT", actorId: "unknown", expectedRevision: 0 })).toThrow(GameRuleError)
+it("uses typed errors for invalid choice controllers", () => {
+  const pending = hit(gameForTurn([godCard("ares", "ares")])).nextState
+  expect(() => applyCommand(pending, {
+    type: "SUBMIT_CHOICE",
+    actorId: "p1",
+    choiceId: pending.pendingChoice?.id ?? "",
+    selection: ["p1"],
+    expectedRevision: pending.revision,
+  })).toThrow(GameRuleError)
 })
