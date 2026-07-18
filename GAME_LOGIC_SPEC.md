@@ -705,7 +705,7 @@ The following are not changes to the core rules, but should be configuration rat
 ```ts
 interface GameConfig {
   targetScore: number;             // official default: 200
-  minimumPlayers: number;          // official packaging: 3
+  minimumPlayers: number;          // this implementation: 2
   actionChoiceTimeoutMs: number;   // online-only behavior
   turnChoiceTimeoutMs: number;     // online-only behavior
   disconnectedPlayerPolicy: "pause" | "autoStay" | "bot";

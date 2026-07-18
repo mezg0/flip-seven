@@ -32,6 +32,11 @@ const StayCommand = Schema.Struct({
   ...RevisionedActorCommandFields,
 })
 
+const AdvanceRoundCommand = Schema.Struct({
+  type: Schema.Literal("ADVANCE_ROUND"),
+  ...RevisionedActorCommandFields,
+})
+
 const SubmitChoiceCommand = Schema.Struct({
   type: Schema.Literal("SUBMIT_CHOICE"),
   ...RevisionedActorCommandFields,
@@ -43,6 +48,7 @@ export const GameCommand = Schema.Union(
   StartGameCommand,
   HitCommand,
   StayCommand,
+  AdvanceRoundCommand,
   SubmitChoiceCommand,
 )
 

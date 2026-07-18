@@ -102,31 +102,16 @@
   z-index: 1;
   inset: 0;
   background:
-    linear-gradient(to bottom, oklch(0.06 0.012 250 / 10%) 28%, oklch(0.06 0.012 250 / 84%) 82%),
-    linear-gradient(112deg, color-mix(in oklch, var(--card-metal-dark), transparent 45%) 0 27%, transparent 27.4%);
+    linear-gradient(to bottom, transparent 34%, oklch(0.06 0.012 250 / 66%) 86%),
+    linear-gradient(112deg, color-mix(in oklch, var(--card-metal-dark), transparent 72%) 0 27%, transparent 27.4%);
   pointer-events: none;
   content: "";
 }
 
 .game-card__number-frame .game-card__artwork {
   z-index: 0;
-  opacity: 0.82;
-  filter: grayscale(0.72) saturate(0.5) contrast(1.14) brightness(0.8);
-}
-
-.game-card__series {
-  position: absolute;
-  z-index: 3;
-  top: 5.5cqi;
-  right: 6cqi;
-  padding: 1cqi 1.7cqi 0.7cqi;
-  color: oklch(0.86 0.045 78);
-  background: oklch(0.07 0.012 250 / 56%);
-  font-size: 4.5cqi;
-  font-weight: 750;
-  letter-spacing: 0.05em;
-  line-height: 1;
-  text-transform: uppercase;
+  opacity: 0.96;
+  filter: grayscale(0.18) saturate(0.88) contrast(1.06) brightness(0.92);
 }
 
 .game-card__value {
@@ -155,8 +140,7 @@
   left: 2.8cqi;
   display: flex;
   align-items: end;
-  justify-content: space-between;
-  gap: 4cqi;
+  justify-content: flex-start;
   min-height: 18cqi;
   padding: 3cqi 4cqi 2.5cqi;
   border: 0.55cqi solid var(--card-metal-dark);
@@ -174,18 +158,6 @@
   line-height: 0.9;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.game-card__kind {
-  flex: none;
-  max-width: 30cqi;
-  color: oklch(0.72 0.045 76);
-  font-size: 4.2cqi;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  line-height: 1.25;
-  text-align: right;
-  text-transform: uppercase;
 }
 
 .game-card__value[data-text-size="small"] { font-size: 58cqi; }
@@ -333,7 +305,7 @@
 
 .game-card__description-line {
   display: block;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .game-card__deity[data-text-size="small"] { font-size: 6cqi; }

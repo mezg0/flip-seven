@@ -117,6 +117,10 @@ export function applyCommand(state: GameState, command: GameCommand): ApplyComma
       stay(context, command.actorId)
       runResolution(context)
       break
+    case "ADVANCE_ROUND":
+      advanceRound(context)
+      runResolution(context)
+      break
     case "SUBMIT_CHOICE":
       submitChoice(context, command.choiceId, command.selection)
       runResolution(context)
@@ -159,6 +163,14 @@ export function validateCommand(state: GameState, command: GameCommand): void {
       }
       if (command.type === "STAY" && !hasPhysicalCardsInFront(actor)) {
         throw new GameRuleError("CANNOT_STAY_WITHOUT_CARDS", "A player needs at least one card before staying")
+      }
+      return
+    case "ADVANCE_ROUND":
+      if (state.phase !== "roundScoring") {
+        throw new GameRuleError("COMMAND_NOT_ALLOWED", "The round can only advance after scoring")
+      }
+      if (actor.seat !== 0) {
+        throw new GameRuleError("COMMAND_NOT_ALLOWED", "Only the host can advance the round")
       }
       return
     case "SUBMIT_CHOICE":
@@ -1043,6 +1055,7 @@ function beginTurn(context: EngineContext, seat: number): void {
 
 function finishRound(context: EngineContext): void {
   const { state } = context
+  if (state.phase === "roundScoring" || state.phase === "gameOver") return
   state.phase = "roundScoring"
   state.currentTurnSeat = null
   state.pendingChoice = null
@@ -1055,11 +1068,14 @@ function finishRound(context: EngineContext): void {
     player.totalScore += score
     emit(context, { type: "ROUND_SCORE_AWARDED", playerId: player.id, score })
   }
-  collectInPlayCards(state)
+  state.winnerId = findWinner(state.players, state.config.targetScore)?.id ?? null
+}
 
-  const winner = findWinner(state.players, state.config.targetScore)
+function advanceRound(context: EngineContext): void {
+  const { state } = context
+  collectInPlayCards(state)
+  const winner = state.players.find((player) => player.id === state.winnerId) ?? null
   if (winner !== null) {
-    state.winnerId = winner.id
     state.phase = "gameOver"
     emit(context, { type: "GAME_WON", playerId: winner.id, totalScore: winner.totalScore })
     return

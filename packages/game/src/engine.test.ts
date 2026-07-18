@@ -81,6 +81,15 @@ function choose(state: GameState, selection: unknown) {
 }
 
 describe("base flow with God cards", () => {
+  it("starts a game with two players", () => {
+    const state = createGame("two-player", players.slice(0, 2), 1)
+    const result = applyCommand(state, { type: "START_GAME", actorId: "p0" }).nextState
+
+    expect(result.phase).toBe("awaitingTurnChoice")
+    expect(result.players).toHaveLength(2)
+    expect(result.players.every((player) => player.numberCards.length === 1)).toBe(true)
+  })
+
   it("deals from the dealer and offers the dealer the first active turn", () => {
     const state = createGame("deal", players, 1, { dealerSeat: 1 })
     state.drawPile = [numberCard("seat-0", 3), numberCard("seat-2", 2), numberCard("seat-1", 1)]
@@ -130,6 +139,67 @@ describe("base flow with God cards", () => {
 
     expect(toPublicGameState(pending, "p0").pendingChoice?.physicalCardIds).toEqual(["one", "two", "three"])
     expect(toPublicGameState(pending, "p1").pendingChoice?.physicalCardIds).toEqual([])
+  })
+
+  it("pauses on the scored round until the host advances it", () => {
+    const state = gameForTurn([numberCard("unused", 1)])
+    state.config.targetScore = 1
+    state.players[0]?.numberCards.push(numberInstance("five", 5))
+    state.players[0]?.modifierCards.push(modifierInstance("plus-four", "add", 4))
+    state.players[1]!.roundStatus = "stayed"
+    state.players[2]!.roundStatus = "busted"
+
+    const scored = applyCommand(state, {
+      type: "STAY",
+      actorId: "p0",
+      expectedRevision: state.revision,
+    })
+
+    expect(scored.nextState.phase).toBe("roundScoring")
+    expect(scored.nextState.players[0]?.totalScore).toBe(9)
+    expect(scored.nextState.players[0]?.numberCards).toHaveLength(1)
+    expect(scored.nextState.winnerId).toBe("p0")
+    expect(scored.events).toContainEqual({ type: "ROUND_SCORE_AWARDED", playerId: "p0", score: 9 })
+    expect(() => applyCommand(scored.nextState, {
+      type: "ADVANCE_ROUND",
+      actorId: "p1",
+      expectedRevision: scored.nextState.revision,
+    })).toThrowError(expect.objectContaining({ code: "COMMAND_NOT_ALLOWED" }))
+
+    const advanced = applyCommand(scored.nextState, {
+      type: "ADVANCE_ROUND",
+      actorId: "p0",
+      expectedRevision: scored.nextState.revision,
+    })
+
+    expect(advanced.nextState.phase).toBe("gameOver")
+    expect(advanced.nextState.players[0]?.numberCards).toHaveLength(0)
+    expect(advanced.events).toContainEqual({ type: "GAME_WON", playerId: "p0", totalScore: 9 })
+  })
+
+  it("deals the next round after the host advances scoring", () => {
+    const state = gameForTurn([
+      numberCard("round-two-p1", 6),
+      numberCard("round-two-p0", 4),
+    ])
+    state.players.splice(2, 1)
+    state.players[0]?.numberCards.push(numberInstance("round-one-five", 5))
+    state.players[1]!.roundStatus = "stayed"
+
+    const scored = applyCommand(state, {
+      type: "STAY",
+      actorId: "p0",
+      expectedRevision: state.revision,
+    }).nextState
+    const advanced = applyCommand(scored, {
+      type: "ADVANCE_ROUND",
+      actorId: "p0",
+      expectedRevision: scored.revision,
+    }).nextState
+
+    expect(advanced.roundNumber).toBe(2)
+    expect(advanced.phase).toBe("awaitingTurnChoice")
+    expect(advanced.players.every((player) => player.numberCards.length === 1)).toBe(true)
   })
 })
 
